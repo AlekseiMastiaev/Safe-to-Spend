@@ -52,3 +52,29 @@ npm run test:unit
 ```sh
 npm run lint
 ```
+
+## Публикация на GitHub Pages
+
+Проект настроен для адреса `https://alekseimastiaev.github.io/Safe-to-Spend/`.
+Наличие конфигурации ещё не означает, что сайт опубликован.
+
+- Vite использует `base: '/Safe-to-Spend/'`, чтобы HTML ссылался на JS и CSS внутри пути репозитория.
+- Vue Router использует hash-навигацию: главная страница имеет адрес `/Safe-to-Spend/#/`.
+  Часть после `#` не отправляется на сервер, поэтому прямое открытие и обновление маршрутов
+  не требуют серверного перенаправления на `index.html`.
+- `npm run build` создаёт каталог `dist`. На Pages публикуется только его содержимое,
+  а не исходники, `node_modules` или локальные данные браузера.
+- Workflow `.github/workflows/deploy.yml` запускается при push в `master` или вручную
+  через `workflow_dispatch`. Ручной запуск для другой ветки пропускает публикацию.
+- Job `build` выполняет `npm ci`, lint, typecheck, test и build, затем сохраняет `dist`
+  как Pages artifact. Job `deploy` запускается только после успешного `build`.
+  Проверки повторяются здесь, чтобы публикация не зависела от параллельного workflow CI.
+
+Перед первой публикацией в репозитории нужно выбрать **Settings → Pages → Build and deployment →
+Source → GitHub Actions**. Затем отправить изменения в `master` и проверить оба job
+во вкладке **Actions**. Workflow не меняет видимость репозитория и не включает Pages автоматически.
+
+Для локального просмотра готовой сборки после `npm run build` запустите `npm run preview`
+и откройте `http://localhost:4173/Safe-to-Spend/#/`.
+Для разработки используйте `npm run dev` и адрес с `/Safe-to-Spend/`, который покажет Vite.
+Preview служит только локальной проверке сборки, а не публичным production-сервером.
