@@ -1,15 +1,7 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
+import AppLayout from '@/components/AppLayout.vue'
 </script>
 
 <template>
-  <main class="app-shell">
-    <RouterView />
-  </main>
+  <AppLayout />
 </template>
-
-<style scoped>
-.app-shell {
-  min-height: 100vh;
-}
-</style>

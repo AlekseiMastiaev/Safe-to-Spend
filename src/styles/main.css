@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light dark;
   font-family:
     Inter,
     system-ui,
@@ -6,12 +7,53 @@
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
-  color: #1f2937;
-  background: #f8fafc;
+
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-text: #1f2937;
+  --color-muted: #52606d;
+  --color-positive: #2f855a;
+  --color-warning: #b7791f;
+  --color-negative: #c53030;
+  --color-border: #dce3eb;
+  --color-interactive: #334e68;
+  --color-interactive-contrast: #ffffff;
+  --color-interactive-subtle: #e8eef5;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  --font-size-sm: 0.75rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5rem;
+  --content-max-width: 64rem;
+  --mobile-navigation-height: 4rem;
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #0f172a;
+    --color-surface: #172033;
+    --color-text: #e5edf5;
+    --color-muted: #a9b7c6;
+    --color-positive: #68d391;
+    --color-warning: #f6c453;
+    --color-negative: #fc8181;
+    --color-border: #334155;
+    --color-interactive: #8cb4d8;
+    --color-interactive-contrast: #0f172a;
+    --color-interactive-subtle: #24364a;
+  }
 }
 
 *,
@@ -29,6 +71,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+  color: var(--color-text);
+  background: var(--color-background);
 }
 
 button,
