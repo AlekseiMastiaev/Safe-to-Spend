@@ -86,9 +86,10 @@ export interface BudgetSummary {
   plannedObligationTotal: MoneyMinorUnits
   actualObligationPaymentsTotal: MoneyMinorUnits
   remainingReserve: MoneyMinorUnits
+  settledSavingsTotal: MoneyMinorUnits
+  overspendTotal: MoneyMinorUnits
   freeExpensesTotal: MoneyMinorUnits
   plannedFreeBalance: MoneyMinorUnits
   actualBalance: MoneyMinorUnits
   safeToSpend: MoneyMinorUnits
-  dailyLimit: MoneyMinorUnits
 }
