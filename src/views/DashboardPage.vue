@@ -2,26 +2,20 @@
 import { computed } from 'vue'
 import BudgetSummary from '@/components/dashboard/BudgetSummary.vue'
 import { createObligationPreview } from '@/components/obligations/preview'
-import { useDexieLiveQuery } from '@/composables/useDexieLiveQuery'
+import { useDataQuery } from '@/composables/useDataQuery'
 import { calculateBudgetSummary } from '@/domain/calculations'
-import { db } from '@/shared/db/database'
 import {
-  DexieFreeExpenseRepository,
-  DexieIncomeRepository,
-  DexieMonthRepository,
-  DexieObligationPaymentRepository,
-  DexieObligationRepository,
-} from '@/shared/db/repositories'
+  freeExpenseRepository,
+  incomeRepository,
+  monthRepository,
+  obligationRepository,
+  paymentRepository,
+} from '@/shared/persistence'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
 
 const selectedMonth = useSelectedMonthStore()
-const monthRepository = new DexieMonthRepository(db)
-const incomeRepository = new DexieIncomeRepository(db)
-const obligationRepository = new DexieObligationRepository(db)
-const paymentRepository = new DexieObligationPaymentRepository(db)
-const expenseRepository = new DexieFreeExpenseRepository(db)
 
-const data = useDexieLiveQuery(async () => {
+const data = useDataQuery(async () => {
   const monthKey = selectedMonth.selectedMonthKey
   if (monthKey === null) throw new Error('Бюджетный месяц не выбран')
   const month = await monthRepository.findByMonthKey(monthKey)
@@ -30,7 +24,7 @@ const data = useDexieLiveQuery(async () => {
     incomeRepository.listByMonth(month.id),
     obligationRepository.listByMonth(month.id),
     paymentRepository.listByMonth(month.id),
-    expenseRepository.listByMonth(month.id),
+    freeExpenseRepository.listByMonth(month.id),
   ])
   return { month, incomes, obligations, payments, freeExpenses }
 })

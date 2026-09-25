@@ -3,28 +3,23 @@ import { computed, ref } from 'vue'
 import ObligationList from '@/components/obligations/ObligationList.vue'
 import PaymentHistoryDialog from '@/components/obligations/PaymentHistoryDialog.vue'
 import { createObligationPreview } from '@/components/obligations/preview'
-import { useDexieLiveQuery } from '@/composables/useDexieLiveQuery'
+import { invalidateData, useDataQuery } from '@/composables/useDataQuery'
 import { formatMoney, parseMoneyAdditionExpression, parseMoneyInput } from '@/domain/money'
 import type { EntityId, MonthlyObligation } from '@/domain/models'
 import { getCurrentIsoDate } from '@/domain/month'
-import { db } from '@/shared/db/database'
 import {
-  DexieMonthRepository,
-  DexieObligationPaymentRepository,
-  DexieObligationRepository,
-} from '@/shared/db/repositories'
-import { DexieBudgetWriteRepository } from '@/shared/db/transactions'
+  budgetWriter,
+  monthRepository,
+  obligationRepository,
+  paymentRepository,
+} from '@/shared/persistence'
 import { useNotificationStore } from '@/stores/notifications'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
 
-const monthRepository = new DexieMonthRepository(db)
-const obligationRepository = new DexieObligationRepository(db)
-const paymentRepository = new DexieObligationPaymentRepository(db)
-const writer = new DexieBudgetWriteRepository(db)
 const selectedMonth = useSelectedMonthStore()
 const notifications = useNotificationStore()
 
-const data = useDexieLiveQuery(async () => {
+const data = useDataQuery(async () => {
   const monthKey = selectedMonth.selectedMonthKey
   if (monthKey === null) throw new Error('Бюджетный месяц не выбран')
   const month = await monthRepository.findByMonthKey(monthKey)
@@ -120,6 +115,7 @@ async function saveObligation(): Promise<void> {
       ? { ...obligationBase, isSettled: true, settledAt: existing.settledAt }
       : { ...obligationBase, isSettled: false, settledAt: null }
     await obligationRepository.save(obligation)
+    invalidateData()
     resetObligationForm()
     notifications.notifySuccess(
       existing ? 'Обязательный расход обновлён' : 'Обязательный расход добавлен',
@@ -167,13 +163,14 @@ async function savePayment(): Promise<void> {
         updatedAt: new Date().toISOString(),
       })
     } else {
-      await writer.addObligationPayments({
+      await budgetWriter.addObligationPayments({
         obligationId: paymentTarget.value.obligation.id,
         amounts,
         paidAt: paidAt.value,
         note: paymentNote.value.trim() || null,
       })
     }
+    invalidateData()
     paymentTargetId.value = null
     editingPaymentId.value = null
     notifications.notifySuccess(existing ? 'Платёж обновлён' : 'Платёж добавлен')
@@ -212,6 +209,7 @@ async function toggleSettled(id: EntityId): Promise<void> {
     : { ...preview.obligation, isSettled: true, settledAt: timestamp, updatedAt: timestamp }
   try {
     await obligationRepository.save(obligation)
+    invalidateData()
     notifications.notifySuccess(obligation.isSettled ? 'Расход закрыт' : 'Расход снова открыт')
   } catch {
     notifications.notifyError('Не удалось изменить состояние расхода')
@@ -223,7 +221,8 @@ async function deleteObligation(id: EntityId): Promise<void> {
   if (!preview || !window.confirm(`Удалить «${preview.obligation.title}» и все его платежи?`))
     return
   try {
-    await writer.deleteObligationWithPayments(id)
+    await budgetWriter.deleteObligationWithPayments(id)
+    invalidateData()
     if (historyTargetId.value === id) historyTargetId.value = null
     if (paymentTargetId.value === id) paymentTargetId.value = null
     notifications.notifySuccess('Обязательный расход удалён')
@@ -236,6 +235,7 @@ async function deletePayment(id: EntityId): Promise<void> {
   if (!window.confirm('Удалить этот платёж?')) return
   try {
     await paymentRepository.delete(id)
+    invalidateData()
     notifications.notifySuccess('Платёж удалён')
   } catch {
     notifications.notifyError('Не удалось удалить платёж')

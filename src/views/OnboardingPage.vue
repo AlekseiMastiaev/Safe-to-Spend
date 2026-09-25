@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { invalidateData } from '@/composables/useDataQuery'
 import { getCurrentMonthKey } from '@/domain/month'
-import { db } from '@/shared/db/database'
-import { DexieOnboardingRepository } from '@/shared/db/onboarding'
+import { onboardingRepository } from '@/shared/persistence'
 import { useNotificationStore } from '@/stores/notifications'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
 
@@ -19,8 +19,9 @@ async function startBudget(): Promise<void> {
   monthKey.value = getCurrentMonthKey()
 
   try {
-    const month = await new DexieOnboardingRepository(db).initialize(monthKey.value)
+    const month = await onboardingRepository.initialize(monthKey.value)
     selectedMonth.setSelectedMonthKey(month.monthKey)
+    invalidateData()
     notifications.notifySuccess('Бюджетный месяц создан')
   } catch {
     error.value = 'Не удалось завершить первый запуск. Попробуйте снова.'

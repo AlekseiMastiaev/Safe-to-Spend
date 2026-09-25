@@ -5,7 +5,7 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
-import { db } from './shared/db/database'
+import { initializePersistence } from './shared/persistence'
 
 const app = createApp(App)
 
@@ -14,6 +14,6 @@ app.use(router)
 
 app.mount('#app')
 
-void db.open().catch((error: unknown) => {
-  console.error('Не удалось открыть локальную базу данных', error)
+void initializePersistence().catch((error: unknown) => {
+  console.error('Не удалось открыть хранилище данных', error)
 })

@@ -1,20 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import IncomeList from '@/components/incomes/IncomeList.vue'
-import { useDexieLiveQuery } from '@/composables/useDexieLiveQuery'
+import { invalidateData, useDataQuery } from '@/composables/useDataQuery'
 import { parseMoneyInput } from '@/domain/money'
 import type { EntityId, Income } from '@/domain/models'
-import { db } from '@/shared/db/database'
-import { DexieIncomeRepository, DexieMonthRepository } from '@/shared/db/repositories'
+import { incomeRepository, monthRepository } from '@/shared/persistence'
 import { useNotificationStore } from '@/stores/notifications'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
 
-const incomeRepository = new DexieIncomeRepository(db)
-const monthRepository = new DexieMonthRepository(db)
 const selectedMonth = useSelectedMonthStore()
 const notifications = useNotificationStore()
 
-const data = useDexieLiveQuery(async () => {
+const data = useDataQuery(async () => {
   const monthKey = selectedMonth.selectedMonthKey
   if (monthKey === null) throw new Error('Бюджетный месяц не выбран')
   const month = await monthRepository.findByMonthKey(monthKey)
@@ -85,6 +82,7 @@ async function saveIncome(): Promise<void> {
       : { ...base, status: 'planned', receivedAt: null }
 
     await incomeRepository.save(income)
+    invalidateData()
     selectedIncomeId.value = income.id
     resetForm()
     notifications.notifySuccess(existing ? 'Доход обновлён' : 'Доход добавлен')
@@ -105,6 +103,7 @@ async function toggleReceived(): Promise<void> {
       : { ...income, status: 'received', receivedAt: timestamp, updatedAt: timestamp }
   try {
     await incomeRepository.save(updated)
+    invalidateData()
     notifications.notifySuccess(
       updated.status === 'received' ? 'Доход отмечен полученным' : 'Доход снова запланирован',
     )
@@ -118,6 +117,7 @@ async function deleteSelectedIncome(): Promise<void> {
   if (!income || !window.confirm(`Удалить доход «${income.title}»?`)) return
   try {
     await incomeRepository.delete(income.id)
+    invalidateData()
     selectedIncomeId.value = null
     if (editingId.value === income.id) resetForm()
     notifications.notifySuccess('Доход удалён')

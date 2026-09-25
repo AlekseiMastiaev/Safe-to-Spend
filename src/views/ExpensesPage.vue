@@ -1,25 +1,22 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import FreeExpenseList from '@/components/expenses/FreeExpenseList.vue'
-import { useDexieLiveQuery } from '@/composables/useDexieLiveQuery'
+import { invalidateData, useDataQuery } from '@/composables/useDataQuery'
 import { parseMoneyInput } from '@/domain/money'
 import type { EntityId, FreeExpense } from '@/domain/models'
 import { getCurrentIsoDate } from '@/domain/month'
-import { db } from '@/shared/db/database'
-import { DexieFreeExpenseRepository, DexieMonthRepository } from '@/shared/db/repositories'
+import { freeExpenseRepository, monthRepository } from '@/shared/persistence'
 import { useNotificationStore } from '@/stores/notifications'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
 
-const expenseRepository = new DexieFreeExpenseRepository(db)
-const monthRepository = new DexieMonthRepository(db)
 const selectedMonth = useSelectedMonthStore()
 const notifications = useNotificationStore()
-const data = useDexieLiveQuery(async () => {
+const data = useDataQuery(async () => {
   const monthKey = selectedMonth.selectedMonthKey
   if (monthKey === null) throw new Error('Бюджетный месяц не выбран')
   const month = await monthRepository.findByMonthKey(monthKey)
   if (!month) throw new Error('Выбранный месяц не найден')
-  return { month, expenses: await expenseRepository.listByMonth(month.id) }
+  return { month, expenses: await freeExpenseRepository.listByMonth(month.id) }
 })
 
 const expenses = computed(() => (data.value.status === 'ready' ? data.value.data.expenses : []))
@@ -76,7 +73,8 @@ async function saveExpense(): Promise<void> {
       createdAt: existing?.createdAt ?? timestamp,
       updatedAt: timestamp,
     }
-    await expenseRepository.save(expense)
+    await freeExpenseRepository.save(expense)
+    invalidateData()
     selectedExpenseId.value = expense.id
     resetForm()
     notifications.notifySuccess(existing ? 'Трата обновлена' : 'Трата добавлена')
@@ -91,7 +89,8 @@ async function deleteSelectedExpense(): Promise<void> {
   const expense = selectedExpense.value
   if (!expense || !window.confirm(`Удалить трату «${expense.title}»?`)) return
   try {
-    await expenseRepository.delete(expense.id)
+    await freeExpenseRepository.delete(expense.id)
+    invalidateData()
     selectedExpenseId.value = null
     if (editingId.value === expense.id) resetForm()
     notifications.notifySuccess('Трата удалена')

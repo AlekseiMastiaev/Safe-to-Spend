@@ -2,17 +2,23 @@
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/AppLayout.vue'
-import { useDexieLiveQuery } from '@/composables/useDexieLiveQuery'
+import { useDataQuery } from '@/composables/useDataQuery'
 import { getCurrentMonthKey } from '@/domain/month'
 import { APP_ROUTE_NAMES } from '@/router/navigation'
-import { db } from '@/shared/db/database'
-import { DexieMonthRepository } from '@/shared/db/repositories'
+import { monthRepository, persistenceMode } from '@/shared/persistence'
+import { useAuthStore } from '@/stores/auth'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
+import AuthPage from '@/views/AuthPage.vue'
 
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
 const selectedMonth = useSelectedMonthStore()
-const months = useDexieLiveQuery(() => new DexieMonthRepository(db).list())
+void auth.initialize()
+const months = useDataQuery(
+  () => monthRepository.list(),
+  () => auth.isAuthenticated,
+)
 
 watch(
   [months, () => route.name, () => selectedMonth.selectedMonthKey],
@@ -55,11 +61,33 @@ function reloadPage(): void {
 </script>
 
 <template>
-  <main v-if="months.status === 'loading'" class="startup-state" role="status">
-    Открываем локальные данные…
+  <main
+    v-if="auth.status === 'idle' || auth.status === 'loading'"
+    class="startup-state"
+    role="status"
+  >
+    Проверяем вход…
+  </main>
+  <main v-else-if="auth.status === 'error'" class="startup-state" role="alert">
+    <p>Не удалось проверить сессию. Обновите страницу и попробуйте снова.</p>
+    <button type="button" @click="reloadPage">Обновить</button>
+  </main>
+  <AuthPage v-else-if="!auth.isAuthenticated" />
+  <main
+    v-else-if="months.status === 'idle' || months.status === 'loading'"
+    class="startup-state"
+    role="status"
+  >
+    {{ persistenceMode === 'cloud' ? 'Загружаем облачный бюджет…' : 'Открываем локальные данные…' }}
   </main>
   <main v-else-if="months.status === 'error'" class="startup-state" role="alert">
-    <p>Не удалось прочитать локальные данные. Проверьте доступ к хранилищу браузера.</p>
+    <p>
+      {{
+        persistenceMode === 'cloud'
+          ? 'Не удалось загрузить облачные данные. Проверьте соединение и попробуйте снова.'
+          : 'Не удалось прочитать локальные данные. Проверьте доступ к хранилищу браузера.'
+      }}
+    </p>
     <button type="button" @click="reloadPage">Повторить</button>
   </main>
   <AppLayout v-else-if="showLayout" />

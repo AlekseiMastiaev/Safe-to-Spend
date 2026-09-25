@@ -1,45 +1,24 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { db } from '@/shared/db/database'
+import { invalidateData } from '@/composables/useDataQuery'
+import { dataMaintenanceRepository, persistenceMode } from '@/shared/persistence'
+import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notifications'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
 
 const notifications = useNotificationStore()
 const selectedMonth = useSelectedMonthStore()
+const auth = useAuthStore()
 const isResetting = ref(false)
 
 async function exportBackup(): Promise<void> {
   try {
-    const [
-      settings,
-      budgetMonths,
-      incomes,
-      obligationTemplates,
-      monthlyObligations,
-      obligationPayments,
-      freeExpenses,
-    ] = await Promise.all([
-      db.settings.toArray(),
-      db.budgetMonths.toArray(),
-      db.incomes.toArray(),
-      db.obligationTemplates.toArray(),
-      db.monthlyObligations.toArray(),
-      db.obligationPayments.toArray(),
-      db.freeExpenses.toArray(),
-    ])
+    const data = await dataMaintenanceRepository.exportAll()
     const backup = {
       format: 'safe-to-spend-backup',
       version: 1,
       exportedAt: new Date().toISOString(),
-      data: {
-        settings,
-        budgetMonths,
-        incomes,
-        obligationTemplates,
-        monthlyObligations,
-        obligationPayments,
-        freeExpenses,
-      },
+      data,
     }
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }),
@@ -64,35 +43,25 @@ async function resetApplication(): Promise<void> {
   }
   isResetting.value = true
   try {
-    await db.transaction(
-      'rw',
-      [
-        db.settings,
-        db.budgetMonths,
-        db.incomes,
-        db.obligationTemplates,
-        db.monthlyObligations,
-        db.obligationPayments,
-        db.freeExpenses,
-      ],
-      async () => {
-        await Promise.all([
-          db.settings.clear(),
-          db.budgetMonths.clear(),
-          db.incomes.clear(),
-          db.obligationTemplates.clear(),
-          db.monthlyObligations.clear(),
-          db.obligationPayments.clear(),
-          db.freeExpenses.clear(),
-        ])
-      },
-    )
+    await dataMaintenanceRepository.clearAll()
     selectedMonth.clearSelectedMonth()
-    notifications.notifySuccess('Все локальные данные удалены')
+    invalidateData()
+    notifications.notifySuccess(
+      persistenceMode === 'cloud' ? 'Все облачные данные удалены' : 'Все локальные данные удалены',
+    )
   } catch {
     notifications.notifyError('Не удалось удалить данные')
   } finally {
     isResetting.value = false
+  }
+}
+
+async function signOut(): Promise<void> {
+  try {
+    await auth.signOut()
+    selectedMonth.clearSelectedMonth()
+  } catch {
+    notifications.notifyError('Не удалось выйти из аккаунта')
   }
 }
 </script>
@@ -101,7 +70,16 @@ async function resetApplication(): Promise<void> {
   <section class="page-stack" aria-labelledby="settings-title">
     <div class="page-heading">
       <h2 id="settings-title">Настройки</h2>
-      <p>Данные хранятся только в IndexedDB этого браузера.</p>
+      <p v-if="persistenceMode === 'cloud'">
+        Данные синхронизируются через облако для аккаунта {{ auth.userEmail }}.
+      </p>
+      <p v-else>Данные хранятся только в IndexedDB этого браузера.</p>
+    </div>
+
+    <div v-if="persistenceMode === 'cloud'" class="panel selection-actions">
+      <h3>Аккаунт</h3>
+      <p>{{ auth.userEmail }}</p>
+      <button class="button button--secondary" type="button" @click="signOut">Выйти</button>
     </div>
 
     <div class="panel selection-actions">
@@ -112,7 +90,13 @@ async function resetApplication(): Promise<void> {
 
     <div class="panel selection-actions">
       <h3>Сброс приложения</h3>
-      <p>Удалит все локальные данные и вернёт экран первого запуска.</p>
+      <p>
+        {{
+          persistenceMode === 'cloud'
+            ? 'Удалит данные аккаунта на всех устройствах и вернёт экран первого запуска.'
+            : 'Удалит все локальные данные и вернёт экран первого запуска.'
+        }}
+      </p>
       <button
         class="button button--danger"
         type="button"

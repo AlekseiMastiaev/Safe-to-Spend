@@ -1,22 +1,18 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useDexieLiveQuery } from '@/composables/useDexieLiveQuery'
+import { invalidateData, useDataQuery } from '@/composables/useDataQuery'
 import type { BudgetMonth } from '@/domain/models'
 import { getCurrentMonthKey, parseMonthKey } from '@/domain/month'
 import { APP_ROUTE_NAMES } from '@/router/navigation'
-import { db } from '@/shared/db/database'
-import { DexieMonthRepository } from '@/shared/db/repositories'
-import { DexieBudgetWriteRepository } from '@/shared/db/transactions'
+import { budgetWriter, monthRepository } from '@/shared/persistence'
 import { useNotificationStore } from '@/stores/notifications'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
 
 const router = useRouter()
 const selectedMonth = useSelectedMonthStore()
 const notifications = useNotificationStore()
-const monthRepository = new DexieMonthRepository(db)
-const writer = new DexieBudgetWriteRepository(db)
-const monthsState = useDexieLiveQuery(() => monthRepository.list())
+const monthsState = useDataQuery(() => monthRepository.list())
 const months = computed(() =>
   monthsState.value.status === 'ready' ? [...monthsState.value.data].reverse() : [],
 )
@@ -50,7 +46,8 @@ async function createMonth(): Promise<void> {
       monthsState.value.data.find(
         (candidate) => candidate.monthKey === selectedMonth.selectedMonthKey,
       ) ?? monthsState.value.data[monthsState.value.data.length - 1]
-    await writer.createMonthFromSource(month, source?.id ?? null)
+    await budgetWriter.createMonthFromSource(month, source?.id ?? null)
+    invalidateData()
     selectedMonth.setSelectedMonthKey(month.monthKey)
     notifications.notifySuccess('Новый месяц создан, планы обязательных расходов скопированы')
     await router.push({ name: APP_ROUTE_NAMES.dashboard })
