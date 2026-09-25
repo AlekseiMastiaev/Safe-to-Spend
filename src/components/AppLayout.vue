@@ -2,6 +2,7 @@
 import { RouterView } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppNavigation from '@/components/AppNavigation.vue'
+import AppNotificationHost from '@/components/AppNotificationHost.vue'
 import MobileBottomNavigation from '@/components/MobileBottomNavigation.vue'
 import { navigationItems } from '@/router/navigation'
 </script>
@@ -16,6 +17,7 @@ import { navigationItems } from '@/router/navigation'
     </main>
 
     <MobileBottomNavigation :items="navigationItems" />
+    <AppNotificationHost />
   </div>
 </template>
 

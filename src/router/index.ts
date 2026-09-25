@@ -4,9 +4,12 @@ import ExpensesPage from '@/views/ExpensesPage.vue'
 import HistoryPage from '@/views/HistoryPage.vue'
 import IncomesPage from '@/views/IncomesPage.vue'
 import NotFoundPage from '@/views/NotFoundPage.vue'
+import OnboardingPage from '@/views/OnboardingPage.vue'
 import ObligationsPage from '@/views/ObligationsPage.vue'
 import SettingsPage from '@/views/SettingsPage.vue'
+import { parseMonthKey } from '@/domain/month'
 import { APP_ROUTE_NAMES } from '@/router/navigation'
+import { useSelectedMonthStore } from '@/stores/selectedMonth'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -17,6 +20,12 @@ declare module 'vue-router' {
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
   routes: [
+    {
+      path: '/onboarding',
+      name: APP_ROUTE_NAMES.onboarding,
+      component: OnboardingPage,
+      meta: { title: 'Первый запуск' },
+    },
     {
       path: '/',
       name: APP_ROUTE_NAMES.dashboard,
@@ -42,7 +51,7 @@ const router = createRouter({
       meta: { title: 'Свободные расходы' },
     },
     {
-      path: '/history/:monthId?',
+      path: '/history/:monthKey?',
       name: APP_ROUTE_NAMES.history,
       component: HistoryPage,
       meta: { title: 'История' },
@@ -62,8 +71,26 @@ const router = createRouter({
   ],
 })
 
-router.afterEach((to) => {
+router.beforeEach((to) => {
+  if (to.name !== APP_ROUTE_NAMES.history) return
+
+  const monthKey = to.params.monthKey
+  if (monthKey === undefined || monthKey === '') return
+
+  if (parseMonthKey(monthKey) === null) {
+    return { name: APP_ROUTE_NAMES.history, replace: true }
+  }
+})
+
+router.afterEach((to, _from, failure) => {
+  if (failure) return
+
   document.title = `${to.meta.title} — Safe to Spend`
+
+  if (to.name === APP_ROUTE_NAMES.history) {
+    const monthKey = parseMonthKey(to.params.monthKey)
+    if (monthKey !== null) useSelectedMonthStore().setSelectedMonthKey(monthKey)
+  }
 })
 
 export default router

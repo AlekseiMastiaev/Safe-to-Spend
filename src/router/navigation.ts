@@ -1,4 +1,5 @@
 export const APP_ROUTE_NAMES = {
+  onboarding: 'onboarding',
   dashboard: 'dashboard',
   incomes: 'incomes',
   obligations: 'obligations',

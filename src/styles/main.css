@@ -85,3 +85,106 @@ textarea {
 #app {
   min-height: 100vh;
 }
+
+.page-stack,
+.form-grid,
+.selection-actions {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.page-heading h2,
+.page-heading p,
+.panel h3,
+.panel p {
+  margin: 0;
+}
+
+.page-heading h2,
+.panel h3 {
+  font-size: var(--font-size-lg);
+}
+
+.page-heading p {
+  margin-top: var(--space-2);
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.panel {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.field span {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: var(--color-background);
+}
+
+.check-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.button {
+  padding: 0.7rem var(--space-3);
+  border: 1px solid var(--color-interactive);
+  border-radius: var(--radius-md);
+  color: var(--color-interactive-contrast);
+  background: var(--color-interactive);
+  cursor: pointer;
+}
+
+.button--secondary {
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.button--danger {
+  border-color: var(--color-negative);
+  color: var(--color-negative);
+  background: var(--color-surface);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.button:focus-visible,
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible {
+  outline: 2px solid var(--color-interactive);
+  outline-offset: 2px;
+}
+
+.form-error {
+  margin: 0;
+  color: var(--color-negative);
+}

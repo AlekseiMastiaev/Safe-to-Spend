@@ -18,6 +18,15 @@ export interface BudgetMonth extends PersistedEntity {
   monthKey: MonthKey
 }
 
+export type ColorScheme = 'system' | 'light' | 'dark'
+
+export interface AppSettings extends PersistedEntity {
+  id: 'app-settings'
+  currency: 'RUB'
+  locale: 'ru-RU'
+  colorScheme: ColorScheme
+}
+
 interface IncomeBase extends PersistedEntity {
   monthId: EntityId
   title: string

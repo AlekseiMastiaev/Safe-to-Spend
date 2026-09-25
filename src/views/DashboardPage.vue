@@ -1,63 +1,73 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import BudgetCard from '@/components/BudgetCard.vue'
+import { computed } from 'vue'
+import BudgetSummary from '@/components/dashboard/BudgetSummary.vue'
+import { createObligationPreview } from '@/components/obligations/preview'
+import { useDexieLiveQuery } from '@/composables/useDexieLiveQuery'
+import { calculateBudgetSummary } from '@/domain/calculations'
+import { db } from '@/shared/db/database'
+import {
+  DexieFreeExpenseRepository,
+  DexieIncomeRepository,
+  DexieMonthRepository,
+  DexieObligationPaymentRepository,
+  DexieObligationRepository,
+} from '@/shared/db/repositories'
+import { useSelectedMonthStore } from '@/stores/selectedMonth'
 
-const selectedCard = ref('')
+const selectedMonth = useSelectedMonthStore()
+const monthRepository = new DexieMonthRepository(db)
+const incomeRepository = new DexieIncomeRepository(db)
+const obligationRepository = new DexieObligationRepository(db)
+const paymentRepository = new DexieObligationPaymentRepository(db)
+const expenseRepository = new DexieFreeExpenseRepository(db)
 
-function selectCard(title: string) {
-  selectedCard.value = title
-}
+const data = useDexieLiveQuery(async () => {
+  const monthKey = selectedMonth.selectedMonthKey
+  if (monthKey === null) throw new Error('Бюджетный месяц не выбран')
+  const month = await monthRepository.findByMonthKey(monthKey)
+  if (!month) throw new Error('Выбранный месяц не найден')
+  const [incomes, obligations, payments, freeExpenses] = await Promise.all([
+    incomeRepository.listByMonth(month.id),
+    obligationRepository.listByMonth(month.id),
+    paymentRepository.listByMonth(month.id),
+    expenseRepository.listByMonth(month.id),
+  ])
+  return { month, incomes, obligations, payments, freeExpenses }
+})
+
+const summary = computed(() => {
+  if (data.value.status !== 'ready') return null
+  return calculateBudgetSummary(data.value.data)
+})
+
+const paymentPreviews = computed(() => {
+  if (data.value.status !== 'ready') return []
+  const payments = data.value.data.payments
+  return data.value.data.obligations.map((obligation) => {
+    const preview = createObligationPreview(obligation, payments)
+    return {
+      id: obligation.id,
+      title: obligation.title,
+      plannedAmount: obligation.plannedAmount,
+      actualPaid: preview.actualPaid,
+      remainingReserve: preview.remainingReserve,
+      isSettled: obligation.isSettled,
+    }
+  })
+})
 </script>
 
 <template>
-  <section class="start-screen" aria-labelledby="dashboard-title">
-    <h2 id="dashboard-title">Главная</h2>
-    <p>Карточки получают данные от родителя и сообщают ему о выборе событием.</p>
-
-    <div class="budget-cards">
-      <BudgetCard
-        title="Безопасный остаток"
-        amount="12 500 ₽"
-        label="Доступно для свободных трат"
-        state="positive"
-        :selected="selectedCard === 'Безопасный остаток'"
-        @select="selectCard('Безопасный остаток')"
-      />
-
-      <BudgetCard
-        title="Обязательные расходы"
-        amount="39 000 ₽"
-        label="Осталось зарезервировано"
-        state="warning"
-        :selected="selectedCard === 'Обязательные расходы'"
-        @select="selectCard('Обязательные расходы')"
-      />
+  <section class="page-stack" aria-labelledby="dashboard-title">
+    <div class="page-heading">
+      <h2 id="dashboard-title">Главная</h2>
+      <p v-if="data.status === 'ready'">Бюджет за {{ data.data.month.monthKey }}</p>
     </div>
 
-    <p v-if="selectedCard" class="selection-result">Выбрано: {{ selectedCard }}</p>
+    <p v-if="data.status === 'loading'" role="status">Считаем бюджет…</p>
+    <p v-else-if="data.status === 'error'" class="form-error" role="alert">
+      Не удалось загрузить бюджет.
+    </p>
+    <BudgetSummary v-else-if="summary" :summary="summary" :payment-previews="paymentPreviews" />
   </section>
 </template>
-
-<style scoped>
-h2 {
-  margin: 0;
-  font-size: var(--font-size-lg);
-  line-height: 1.4;
-}
-
-p {
-  margin: calc(var(--space-2) + var(--space-1)) 0 0;
-  line-height: 1.5;
-}
-
-.budget-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  gap: var(--space-3);
-  margin-top: var(--space-4);
-}
-
-.selection-result {
-  font-weight: 600;
-}
-</style>
