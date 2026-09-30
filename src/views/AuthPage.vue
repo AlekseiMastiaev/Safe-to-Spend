@@ -5,7 +5,18 @@ import { useAuthStore } from '@/stores/auth'
 const auth = useAuthStore()
 const email = ref('')
 const isSending = ref(false)
+const isOpeningGitHub = ref(false)
 const linkSent = ref(false)
+
+async function signInWithGitHub(): Promise<void> {
+  if (isOpeningGitHub.value) return
+  isOpeningGitHub.value = true
+  try {
+    await auth.signInWithGitHub()
+  } catch {
+    isOpeningGitHub.value = false
+  }
+}
 
 async function sendLink(): Promise<void> {
   if (isSending.value) return
@@ -27,7 +38,18 @@ async function sendLink(): Promise<void> {
     <section class="panel auth-page__panel" aria-labelledby="auth-title">
       <p class="auth-page__brand">Safe to Spend</p>
       <h1 id="auth-title">Вход в облачный бюджет</h1>
-      <p>Введите email. Мы отправим одноразовую ссылку для входа без пароля.</p>
+      <p>Войдите через GitHub или получите одноразовую ссылку на email.</p>
+
+      <button
+        class="button auth-page__github"
+        type="button"
+        :disabled="isOpeningGitHub"
+        @click="signInWithGitHub"
+      >
+        {{ isOpeningGitHub ? 'Открываем GitHub…' : 'Войти через GitHub' }}
+      </button>
+
+      <div class="auth-page__separator"><span>или</span></div>
 
       <form class="form-grid" @submit.prevent="sendLink">
         <label class="field">
@@ -76,5 +98,25 @@ h1 {
 
 .auth-page__success {
   color: var(--color-positive);
+}
+
+.auth-page__github {
+  width: 100%;
+  margin-top: var(--space-3);
+}
+
+.auth-page__separator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+  color: var(--color-muted);
+}
+
+.auth-page__separator::before,
+.auth-page__separator::after {
+  flex: 1;
+  border-top: 1px solid var(--color-border);
+  content: '';
 }
 </style>

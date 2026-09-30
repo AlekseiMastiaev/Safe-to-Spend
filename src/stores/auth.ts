@@ -63,6 +63,19 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function signInWithGitHub(): Promise<void> {
+    error.value = null
+    const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`
+    const { error: signInError } = await getCloudClient().auth.signInWithOAuth({
+      provider: 'github',
+      options: { redirectTo },
+    })
+    if (signInError) {
+      error.value = signInError.message
+      throw signInError
+    }
+  }
+
   async function signOut(): Promise<void> {
     error.value = null
     const { error: signOutError } = await getCloudClient().auth.signOut()
@@ -81,6 +94,7 @@ export const useAuthStore = defineStore('auth', () => {
     isCloud,
     initialize,
     sendMagicLink,
+    signInWithGitHub,
     signOut,
   }
 })

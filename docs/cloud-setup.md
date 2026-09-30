@@ -19,6 +19,14 @@ VITE_SUPABASE_PUBLISHABLE_KEY
 4. В GitHub Actions добавить repository variables `VITE_SUPABASE_URL` и `VITE_SUPABASE_PUBLISHABLE_KEY`.
 5. Передать их в шаг `npm run build` workflow публикации.
 
+## Вход через GitHub
+
+1. Создать GitHub OAuth App с homepage `https://alekseimastiaev.github.io/Safe-to-Spend/`.
+2. Указать callback `https://djkdsppljjuqzjdlelee.supabase.co/auth/v1/callback`.
+3. В Supabase Authentication → Sign In / Providers → GitHub включить провайдер и сохранить Client ID и Client Secret.
+
+Client Secret хранится только в настройках Supabase и не добавляется в Vite, GitHub Actions или репозиторий.
+
 В frontend используется только publishable key. Secret key и устаревший `service_role` нельзя добавлять в Vite, GitHub Pages или репозиторий.
 
 ## Модель доступа
