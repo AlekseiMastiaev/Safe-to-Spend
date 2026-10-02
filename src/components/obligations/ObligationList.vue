@@ -3,9 +3,15 @@ import type { EntityId } from '@/domain/models'
 import ObligationListItem from './ObligationListItem.vue'
 import type { ObligationPreview } from './preview'
 
-const props = defineProps<{
-  previews: readonly ObligationPreview[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    previews: readonly ObligationPreview[]
+    emptyMessage?: string
+  }>(),
+  {
+    emptyMessage: 'Обязательных расходов пока нет.',
+  },
+)
 
 const emit = defineEmits<{
   showHistory: [id: EntityId]
@@ -29,7 +35,7 @@ const emit = defineEmits<{
       />
     </li>
   </ul>
-  <p v-else class="obligation-list__empty">Обязательных расходов пока нет.</p>
+  <p v-else class="obligation-list__empty">{{ props.emptyMessage }}</p>
 </template>
 
 <style scoped>

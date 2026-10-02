@@ -8,12 +8,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '@/App.vue'
 import router from '@/router'
 import { APP_ROUTE_NAMES } from '@/router/navigation'
+import { getCurrentMonthKey } from '@/domain/month'
 import { db } from '@/shared/db/database'
 import { DexieOnboardingRepository } from '@/shared/db/onboarding'
 import { DexieMonthRepository } from '@/shared/db/repositories'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
 
 describe('first-run UI', () => {
+  const currentMonthKey = getCurrentMonthKey()
+
   beforeEach(async () => {
     await db.open()
   })
@@ -37,7 +40,7 @@ describe('first-run UI', () => {
 
     await wrapper.get('button').trigger('click')
     await vi.waitFor(() => expect(router.currentRoute.value.name).toBe(APP_ROUTE_NAMES.dashboard))
-    await vi.waitFor(() => expect(wrapper.text()).toContain('Бюджет за 2026-09'))
+    await vi.waitFor(() => expect(wrapper.text()).toContain(`Бюджет за ${currentMonthKey}`))
     expect(await db.budgetMonths.count()).toBe(1)
     expect(await db.settings.get('app-settings')).toMatchObject({
       currency: 'RUB',

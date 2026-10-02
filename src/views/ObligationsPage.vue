@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import AppDialog from '@/components/AppDialog.vue'
 import ObligationList from '@/components/obligations/ObligationList.vue'
 import PaymentHistoryDialog from '@/components/obligations/PaymentHistoryDialog.vue'
 import { createObligationPreview } from '@/components/obligations/preview'
@@ -40,6 +41,12 @@ const previews = computed(() => {
     ),
   )
 })
+const openPreviews = computed(() =>
+  previews.value.filter((preview) => !preview.obligation.isSettled),
+)
+const settledPreviews = computed(() =>
+  previews.value.filter((preview) => preview.obligation.isSettled),
+)
 const historyTargetId = ref<EntityId | null>(null)
 const selectedPreview = computed(() =>
   previews.value.find((preview) => preview.obligation.id === historyTargetId.value),
@@ -52,6 +59,7 @@ const paymentTarget = computed(() =>
 const title = ref('')
 const plannedAmount = ref('')
 const editingObligationId = ref<EntityId | null>(null)
+const isObligationDialogOpen = ref(false)
 const obligationError = ref<string | null>(null)
 const isSavingObligation = ref(false)
 
@@ -79,6 +87,16 @@ function resetObligationForm(): void {
   obligationError.value = null
 }
 
+function openObligationForm(): void {
+  resetObligationForm()
+  isObligationDialogOpen.value = true
+}
+
+function closeObligationForm(): void {
+  isObligationDialogOpen.value = false
+  resetObligationForm()
+}
+
 function editObligation(id: EntityId): void {
   const preview = previews.value.find((item) => item.obligation.id === id)
   if (!preview) return
@@ -86,6 +104,7 @@ function editObligation(id: EntityId): void {
   title.value = preview.obligation.title
   plannedAmount.value = String(preview.obligation.plannedAmount / 100).replace('.', ',')
   obligationError.value = null
+  isObligationDialogOpen.value = true
 }
 
 async function saveObligation(): Promise<void> {
@@ -116,7 +135,7 @@ async function saveObligation(): Promise<void> {
       : { ...obligationBase, isSettled: false, settledAt: null }
     await obligationRepository.save(obligation)
     invalidateData()
-    resetObligationForm()
+    closeObligationForm()
     notifications.notifySuccess(
       existing ? 'Обязательный расход обновлён' : 'Обязательный расход добавлен',
     )
@@ -245,114 +264,148 @@ async function deletePayment(id: EntityId): Promise<void> {
 
 <template>
   <section class="page-stack" aria-labelledby="obligations-title">
-    <div class="page-heading">
-      <h2 id="obligations-title">Обязательные расходы</h2>
-      <p>План хранит резерв, платежи уменьшают его, а явное закрытие фиксирует экономию.</p>
-    </div>
-
-    <form class="panel form-grid" @submit.prevent="saveObligation">
-      <h3>
-        {{ editingObligationId ? 'Изменить обязательный расход' : 'Добавить обязательный расход' }}
-      </h3>
-      <label class="field">
-        <span>Название</span>
-        <input
-          v-model="title"
-          required
-          autocomplete="off"
-          placeholder="Например, коммунальные услуги"
-        />
-      </label>
-      <label class="field">
-        <span>План, ₽</span>
-        <input
-          v-model="plannedAmount"
-          required
-          inputmode="decimal"
-          autocomplete="off"
-          placeholder="10 000"
-        />
-      </label>
-      <p v-if="obligationError" class="form-error" role="alert">{{ obligationError }}</p>
-      <div class="button-row">
-        <button class="button" type="submit" :disabled="isSavingObligation">
-          {{
-            isSavingObligation
-              ? 'Сохраняем…'
-              : editingObligationId
-                ? 'Сохранить изменения'
-                : 'Добавить расход'
-          }}
-        </button>
-        <button
-          v-if="editingObligationId"
-          class="button button--secondary"
-          type="button"
-          @click="resetObligationForm"
-        >
-          Отмена
-        </button>
+    <div class="page-heading page-heading--with-action">
+      <div>
+        <h2 id="obligations-title">Обязательные расходы</h2>
+        <p>План хранит резерв, платежи уменьшают его, а явное закрытие фиксирует экономию.</p>
       </div>
-    </form>
-
-    <form v-if="paymentTarget" class="panel form-grid" @submit.prevent="savePayment">
-      <h3>
-        {{ editingPaymentId ? 'Изменить платёж' : 'Платёж' }}: {{ paymentTarget.obligation.title }}
-      </h3>
-      <label class="field">
-        <span>Сумма или сложение сумм, ₽</span>
-        <input
-          v-model="paymentExpression"
-          required
-          inputmode="decimal"
-          autocomplete="off"
-          placeholder="1 000 + 250,50"
-        />
-      </label>
-      <button class="button button--secondary" type="button" @click="appendPaymentPart">
-        + добавить сумму
+      <button class="button" type="button" @click="openObligationForm">
+        + Добавить обязательный расход
       </button>
-      <p v-if="paymentPreviewTotal !== null">
-        Итого: <strong>{{ formatMoney(paymentPreviewTotal) }}</strong>
-      </p>
-      <label class="field">
-        <span>Дата платежа</span>
-        <input v-model="paidAt" required type="date" />
-      </label>
-      <label class="field">
-        <span>Заметка (необязательно)</span>
-        <input v-model="paymentNote" autocomplete="off" placeholder="Первый счёт" />
-      </label>
-      <p v-if="paymentError" class="form-error" role="alert">{{ paymentError }}</p>
-      <div class="button-row">
-        <button class="button" type="submit" :disabled="isSavingPayment">
-          {{
-            isSavingPayment
-              ? 'Сохраняем…'
-              : editingPaymentId
-                ? 'Сохранить изменения'
-                : 'Сохранить платёж'
-          }}
-        </button>
-        <button class="button button--secondary" type="button" @click="cancelPayment">
-          Отмена
-        </button>
-      </div>
-    </form>
+    </div>
 
     <p v-if="data.status === 'loading'" role="status">Загружаем обязательные расходы…</p>
     <p v-else-if="data.status === 'error'" class="form-error" role="alert">
       Не удалось загрузить обязательные расходы.
     </p>
-    <ObligationList
-      v-else
-      :previews="previews"
-      @show-history="historyTargetId = $event"
-      @add-payment="openPayment"
-      @edit="editObligation"
-      @toggle-settled="toggleSettled"
-      @delete="deleteObligation"
-    />
+    <template v-else>
+      <section class="obligation-group" aria-labelledby="open-obligations-title">
+        <div class="obligation-group__heading">
+          <h3 id="open-obligations-title">Открытые расходы</h3>
+          <span>{{ openPreviews.length }}</span>
+        </div>
+        <ObligationList
+          :previews="openPreviews"
+          empty-message="Открытых обязательных расходов нет."
+          @show-history="historyTargetId = $event"
+          @add-payment="openPayment"
+          @edit="editObligation"
+          @toggle-settled="toggleSettled"
+          @delete="deleteObligation"
+        />
+      </section>
+
+      <details v-if="settledPreviews.length > 0" class="settled-obligations">
+        <summary>
+          <span>Закрытые расходы</span>
+          <span class="settled-obligations__count">{{ settledPreviews.length }}</span>
+        </summary>
+        <div class="settled-obligations__content">
+          <p>Резерв по ним освобождён. Раскройте действия, чтобы открыть расход снова.</p>
+          <ObligationList
+            :previews="settledPreviews"
+            @show-history="historyTargetId = $event"
+            @add-payment="openPayment"
+            @edit="editObligation"
+            @toggle-settled="toggleSettled"
+            @delete="deleteObligation"
+          />
+        </div>
+      </details>
+    </template>
+
+    <AppDialog
+      v-if="isObligationDialogOpen"
+      :title="editingObligationId ? 'Изменить обязательный расход' : 'Новый обязательный расход'"
+      @close="closeObligationForm"
+    >
+      <form class="form-grid" @submit.prevent="saveObligation">
+        <label class="field">
+          <span>Название</span>
+          <input
+            v-model="title"
+            required
+            autofocus
+            autocomplete="off"
+            placeholder="Например, коммунальные услуги"
+          />
+        </label>
+        <label class="field">
+          <span>План, ₽</span>
+          <input
+            v-model="plannedAmount"
+            required
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="10 000"
+          />
+        </label>
+        <p v-if="obligationError" class="form-error" role="alert">{{ obligationError }}</p>
+        <div class="button-row">
+          <button class="button" type="submit" :disabled="isSavingObligation">
+            {{
+              isSavingObligation
+                ? 'Сохраняем…'
+                : editingObligationId
+                  ? 'Сохранить изменения'
+                  : 'Добавить расход'
+            }}
+          </button>
+          <button class="button button--secondary" type="button" @click="closeObligationForm">
+            Отмена
+          </button>
+        </div>
+      </form>
+    </AppDialog>
+
+    <AppDialog
+      v-if="paymentTarget"
+      :title="`${editingPaymentId ? 'Изменить платёж' : 'Новый платёж'}: ${paymentTarget.obligation.title}`"
+      @close="cancelPayment"
+    >
+      <form class="form-grid" @submit.prevent="savePayment">
+        <label class="field">
+          <span>Сумма или сложение сумм, ₽</span>
+          <input
+            v-model="paymentExpression"
+            required
+            autofocus
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="1 000 + 250,50"
+          />
+        </label>
+        <button class="button button--secondary" type="button" @click="appendPaymentPart">
+          + добавить сумму
+        </button>
+        <p v-if="paymentPreviewTotal !== null" class="payment-total">
+          Итого: <strong>{{ formatMoney(paymentPreviewTotal) }}</strong>
+        </p>
+        <label class="field">
+          <span>Дата платежа</span>
+          <input v-model="paidAt" required type="date" />
+        </label>
+        <label class="field">
+          <span>Заметка (необязательно)</span>
+          <input v-model="paymentNote" autocomplete="off" placeholder="Первый счёт" />
+        </label>
+        <p v-if="paymentError" class="form-error" role="alert">{{ paymentError }}</p>
+        <div class="button-row">
+          <button class="button" type="submit" :disabled="isSavingPayment">
+            {{
+              isSavingPayment
+                ? 'Сохраняем…'
+                : editingPaymentId
+                  ? 'Сохранить изменения'
+                  : 'Сохранить платёж'
+            }}
+          </button>
+          <button class="button button--secondary" type="button" @click="cancelPayment">
+            Отмена
+          </button>
+        </div>
+      </form>
+    </AppDialog>
 
     <PaymentHistoryDialog
       v-if="selectedPreview"
@@ -363,3 +416,116 @@ async function deletePayment(id: EntityId): Promise<void> {
     />
   </section>
 </template>
+
+<style scoped>
+.page-heading--with-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.page-heading--with-action > div {
+  max-width: 42rem;
+}
+
+.obligation-group {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.obligation-group__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.obligation-group__heading h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.obligation-group__heading span,
+.settled-obligations__count {
+  display: inline-grid;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--color-interactive-subtle);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  font-weight: 700;
+  place-items: center;
+}
+
+.settled-obligations {
+  border: 1px solid var(--color-positive-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-positive-surface);
+}
+
+.settled-obligations > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-positive-strong);
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.settled-obligations > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settled-obligations > summary::after {
+  content: 'Показать';
+  margin-left: auto;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.settled-obligations[open] > summary::after {
+  content: 'Скрыть';
+}
+
+.settled-obligations > summary:focus-visible {
+  outline: 2px solid var(--color-interactive);
+  outline-offset: 2px;
+}
+
+.settled-obligations__content {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.settled-obligations__content > p,
+.payment-total {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+@media (max-width: 35.99rem) {
+  .page-heading--with-action .button {
+    width: 100%;
+  }
+
+  .settled-obligations > summary {
+    padding: var(--space-3);
+  }
+
+  .settled-obligations > summary::after {
+    content: 'Открыть';
+  }
+
+  .settled-obligations[open] > summary::after {
+    content: 'Скрыть';
+  }
+}
+</style>

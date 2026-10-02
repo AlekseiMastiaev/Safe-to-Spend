@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import type { MonthlyObligation, ObligationPayment } from '@/domain/models'
+import AppDialog from '../AppDialog.vue'
 import ObligationList from '../obligations/ObligationList.vue'
 import ObligationListItem from '../obligations/ObligationListItem.vue'
 import PaymentHistoryDialog from '../obligations/PaymentHistoryDialog.vue'
@@ -54,6 +55,21 @@ describe('ObligationListItem', () => {
     expect(wrapper.emitted('showHistory')).toEqual([['utilities']])
   })
 
+  it('keeps secondary actions collapsed until the user asks for them', async () => {
+    const wrapper = mount(ObligationListItem, { props: { preview } })
+
+    expect(wrapper.find('button[aria-expanded="false"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Закрыть расход')
+    expect(wrapper.text()).not.toContain('Изменить')
+
+    await wrapper.get('button[aria-expanded="false"]').trigger('click')
+
+    expect(wrapper.get('button[aria-expanded="true"]')).toBeDefined()
+    expect(wrapper.text()).toContain('Закрыть расход')
+    expect(wrapper.text()).toContain('Изменить')
+    expect(wrapper.text()).toContain('Удалить')
+  })
+
   it('updates the visible state when the parent passes a settled obligation', async () => {
     const wrapper = mount(ObligationListItem, { props: { preview } })
     const settledObligation: MonthlyObligation = {
@@ -69,8 +85,14 @@ describe('ObligationListItem', () => {
     const text = normalizeSpaces(wrapper.text())
     expect(text).toContain('Закрыт')
     expect(text).toContain('Экономия после закрытия: 4 000 ₽')
-    expect(wrapper.get('dl div:last-child dt').text()).toBe('Осталось в резерве')
-    expect(normalizeSpaces(wrapper.get('dl div:last-child dd').text())).toBe('0 ₽')
+    expect(wrapper.classes()).toContain('obligation-list-item--settled')
+    expect(wrapper.find('progress').exists()).toBe(false)
+    expect(
+      normalizeSpaces(
+        wrapper.get('.obligation-list-item__settled-summary div:last-child dd').text(),
+      ),
+    ).toBe('6 000 ₽')
+    expect(wrapper.text()).not.toContain('Добавить платёж')
   })
 })
 
@@ -97,5 +119,23 @@ describe('PaymentHistoryDialog', () => {
 
     await wrapper.get('button').trigger('click')
     expect(wrapper.emitted('close')).toHaveLength(1)
+  })
+})
+
+describe('AppDialog', () => {
+  it('labels the modal and emits close from the close button', async () => {
+    const wrapper = mount(AppDialog, {
+      props: { title: 'Новый обязательный расход' },
+      slots: { default: '<p>Форма</p>' },
+      global: { stubs: { Teleport: true } },
+    })
+
+    const dialog = wrapper.get('dialog')
+    expect(dialog.attributes('aria-labelledby')).toBe(wrapper.get('h3').attributes('id'))
+    expect(wrapper.text()).toContain('Новый обязательный расход')
+
+    await wrapper.get('button[aria-label="Закрыть окно"]').trigger('click')
+    expect(wrapper.emitted('close')).toHaveLength(1)
+    wrapper.unmount()
   })
 })

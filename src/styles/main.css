@@ -13,6 +13,10 @@
   --color-text: #1f2937;
   --color-muted: #52606d;
   --color-positive: #2f855a;
+  --color-positive-strong: #276749;
+  --color-positive-surface: #f0fff4;
+  --color-positive-border: #9ae6b4;
+  --color-positive-badge: #c6f6d5;
   --color-warning: #b7791f;
   --color-negative: #c53030;
   --color-border: #dce3eb;
@@ -47,6 +51,10 @@
     --color-text: #e5edf5;
     --color-muted: #a9b7c6;
     --color-positive: #68d391;
+    --color-positive-strong: #c6f6d5;
+    --color-positive-surface: #163527;
+    --color-positive-border: #3f7d5a;
+    --color-positive-badge: #24543b;
     --color-warning: #f6c453;
     --color-negative: #fc8181;
     --color-border: #334155;
@@ -73,6 +81,10 @@ body {
   margin: 0;
   color: var(--color-text);
   background: var(--color-background);
+}
+
+body.has-modal-dialog {
+  overflow: hidden;
 }
 
 button,

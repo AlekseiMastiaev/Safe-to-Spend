@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { formatMoney } from '@/domain/money'
 import type { EntityId } from '@/domain/models'
 import ObligationProgress from './ObligationProgress.vue'
@@ -22,21 +22,44 @@ const state = computed(() => {
   if (props.preview.actualPaid > 0) return 'Частично оплачен'
   return 'Не начат'
 })
+
+const actionsOpen = ref(false)
+const actionsId = computed(() => `obligation-actions-${props.preview.obligation.id}`)
 </script>
 
 <template>
-  <article class="obligation-list-item">
+  <article
+    class="obligation-list-item"
+    :class="{ 'obligation-list-item--settled': preview.obligation.isSettled }"
+  >
     <div class="obligation-list-item__heading">
       <h3>{{ preview.obligation.title }}</h3>
-      <span class="obligation-list-item__state">{{ state }}</span>
+      <span
+        class="obligation-list-item__state"
+        :class="{ 'obligation-list-item__state--settled': preview.obligation.isSettled }"
+      >
+        {{ state }}
+      </span>
     </div>
 
     <ObligationProgress
+      v-if="!preview.obligation.isSettled"
       :title="preview.obligation.title"
       :planned-amount="preview.obligation.plannedAmount"
       :actual-paid="preview.actualPaid"
       :remaining-reserve="preview.remainingReserve"
     />
+
+    <dl v-else class="obligation-list-item__settled-summary">
+      <div>
+        <dt>План</dt>
+        <dd>{{ formatMoney(preview.obligation.plannedAmount) }}</dd>
+      </div>
+      <div>
+        <dt>Оплачено</dt>
+        <dd>{{ formatMoney(preview.actualPaid) }}</dd>
+      </div>
+    </dl>
 
     <p v-if="preview.savings > 0" class="obligation-list-item__savings">
       Экономия после закрытия: {{ formatMoney(preview.savings) }}
@@ -45,8 +68,13 @@ const state = computed(() => {
       Перерасход: {{ formatMoney(preview.overspend) }}
     </p>
 
-    <div class="obligation-list-item__actions">
-      <button type="button" @click="emit('addPayment', preview.obligation.id)">
+    <div class="obligation-list-item__primary-actions">
+      <button
+        v-if="!preview.obligation.isSettled"
+        class="obligation-list-item__payment"
+        type="button"
+        @click="emit('addPayment', preview.obligation.id)"
+      >
         Добавить платёж
       </button>
       <button
@@ -56,6 +84,24 @@ const state = computed(() => {
       >
         История
       </button>
+      <button
+        type="button"
+        :aria-expanded="actionsOpen"
+        :aria-controls="actionsId"
+        @click="actionsOpen = !actionsOpen"
+      >
+        Действия
+        <span aria-hidden="true">{{ actionsOpen ? '−' : '+' }}</span>
+      </button>
+    </div>
+
+    <div
+      v-if="actionsOpen"
+      :id="actionsId"
+      class="obligation-list-item__actions"
+      role="region"
+      :aria-label="`Действия с расходом: ${preview.obligation.title}`"
+    >
       <button type="button" @click="emit('toggleSettled', preview.obligation.id)">
         {{ preview.obligation.isSettled ? 'Открыть снова' : 'Закрыть расход' }}
       </button>
@@ -81,6 +127,11 @@ const state = computed(() => {
   background: var(--color-surface);
 }
 
+.obligation-list-item--settled {
+  border-color: var(--color-positive-border);
+  background: var(--color-positive-surface);
+}
+
 .obligation-list-item__heading {
   display: flex;
   flex-wrap: wrap;
@@ -99,8 +150,17 @@ h3 {
 }
 
 .obligation-list-item__state {
+  padding: var(--space-1) var(--space-2);
+  border-radius: 999px;
+  background: var(--color-interactive-subtle);
   color: var(--color-muted);
   font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.obligation-list-item__state--settled {
+  background: var(--color-positive-badge);
+  color: var(--color-positive-strong);
 }
 
 .obligation-list-item__savings {
@@ -112,7 +172,6 @@ h3 {
 }
 
 button {
-  justify-self: start;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-interactive);
   border-radius: var(--radius-md);
@@ -121,10 +180,42 @@ button {
   cursor: pointer;
 }
 
+.obligation-list-item__settled-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.obligation-list-item__settled-summary div {
+  min-width: 7rem;
+}
+
+.obligation-list-item__settled-summary dt {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.obligation-list-item__settled-summary dd {
+  margin: var(--space-1) 0 0;
+  font-weight: 700;
+}
+
+.obligation-list-item__primary-actions,
 .obligation-list-item__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.obligation-list-item__payment {
+  color: var(--color-interactive-contrast);
+  background: var(--color-interactive);
+}
+
+.obligation-list-item__actions {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
 }
 
 .obligation-list-item__delete {
@@ -135,5 +226,11 @@ button {
 button:focus-visible {
   outline: 2px solid var(--color-interactive);
   outline-offset: 2px;
+}
+
+@media (max-width: 35.99rem) {
+  .obligation-list-item__primary-actions > button {
+    flex: 1 1 auto;
+  }
 }
 </style>
