@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import BudgetSummary from '@/components/dashboard/BudgetSummary.vue'
-import { createObligationPreview } from '@/components/obligations/preview'
 import { useDataQuery } from '@/composables/useDataQuery'
 import { calculateBudgetSummary } from '@/domain/calculations'
 import {
@@ -33,22 +32,6 @@ const summary = computed(() => {
   if (data.value.status !== 'ready') return null
   return calculateBudgetSummary(data.value.data)
 })
-
-const paymentPreviews = computed(() => {
-  if (data.value.status !== 'ready') return []
-  const payments = data.value.data.payments
-  return data.value.data.obligations.map((obligation) => {
-    const preview = createObligationPreview(obligation, payments)
-    return {
-      id: obligation.id,
-      title: obligation.title,
-      plannedAmount: obligation.plannedAmount,
-      actualPaid: preview.actualPaid,
-      remainingReserve: preview.remainingReserve,
-      isSettled: obligation.isSettled,
-    }
-  })
-})
 </script>
 
 <template>
@@ -62,6 +45,6 @@ const paymentPreviews = computed(() => {
     <p v-else-if="data.status === 'error'" class="form-error" role="alert">
       Не удалось загрузить бюджет.
     </p>
-    <BudgetSummary v-else-if="summary" :summary="summary" :payment-previews="paymentPreviews" />
+    <BudgetSummary v-else-if="summary" :summary="summary" />
   </section>
 </template>

@@ -30,9 +30,9 @@ const plannedIncome: Income = {
 }
 
 describe('IncomeList', () => {
-  it('renders incomes with different statuses and forwards a selection event', async () => {
+  it('renders incomes with different statuses and forwards an item action', async () => {
     const wrapper = mount(IncomeList, {
-      props: { incomes: [receivedIncome, plannedIncome], selectedId: null },
+      props: { incomes: [receivedIncome, plannedIncome] },
     })
 
     expect(wrapper.findAll('li')).toHaveLength(2)
@@ -40,13 +40,14 @@ describe('IncomeList', () => {
     expect(wrapper.text()).toContain('Получен')
     expect(wrapper.text()).toContain('Запланирован')
 
-    await wrapper.get('li:first-child button').trigger('click')
-    expect(wrapper.emitted('select')).toEqual([[receivedIncome.id]])
+    await wrapper.get('li:first-child button[aria-expanded="false"]').trigger('click')
+    await wrapper.get('li:first-child .income-list-item__actions button').trigger('click')
+    expect(wrapper.emitted('toggleReceived')).toEqual([[receivedIncome.id]])
   })
 
   it('shows an empty state when there are no incomes', () => {
     const wrapper = mount(IncomeList, {
-      props: { incomes: [], selectedId: null },
+      props: { incomes: [] },
     })
 
     expect(wrapper.text()).toContain('Доходов пока нет')
@@ -55,12 +56,20 @@ describe('IncomeList', () => {
 })
 
 describe('IncomeListItem', () => {
-  it('shows its controlled selection state', () => {
+  it('keeps actions inside the item and collapsed by default', async () => {
     const wrapper = mount(IncomeListItem, {
-      props: { income: plannedIncome, selected: true },
+      props: { income: plannedIncome },
     })
 
-    expect(wrapper.get('button').attributes('aria-pressed')).toBe('true')
-    expect(wrapper.get('button').text()).toBe('Выбрано')
+    expect(wrapper.text()).not.toContain('Выбрать')
+    expect(wrapper.get('button').attributes('aria-expanded')).toBe('false')
+    expect(wrapper.text()).not.toContain('Отметить полученным')
+
+    await wrapper.get('button').trigger('click')
+
+    expect(wrapper.get('button[aria-expanded="true"]')).toBeDefined()
+    expect(wrapper.text()).toContain('Отметить полученным')
+    expect(wrapper.text()).toContain('Изменить')
+    expect(wrapper.text()).toContain('Удалить')
   })
 })

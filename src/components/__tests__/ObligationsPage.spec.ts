@@ -65,13 +65,36 @@ describe('ObligationsPage interface', () => {
     })
 
     await vi.waitFor(() => expect(wrapper.text()).toContain('Коммунальные услуги'))
-    expect(wrapper.get('.obligation-group').text()).not.toContain('Страховка')
-    expect(wrapper.get('.settled-obligations').text()).toContain('Страховка')
-    expect(wrapper.get('.settled-obligations').attributes('open')).toBeUndefined()
+    const groups = wrapper.findAll('.obligation-group')
+    expect(groups).toHaveLength(2)
+    expect(groups[0]!.text()).toContain('Коммунальные услуги')
+    expect(groups[0]!.text()).not.toContain('Страховка')
+    expect(groups[1]!.text()).toContain('Страховка')
+    expect(groups[0]!.attributes('open')).toBeUndefined()
+    expect(groups[1]!.attributes('open')).toBeUndefined()
 
     await wrapper.get('button').trigger('click')
     expect(wrapper.get('dialog').attributes('aria-labelledby')).toBeTruthy()
     expect(wrapper.get('dialog').text()).toContain('Новый обязательный расход')
+    wrapper.unmount()
+  })
+
+  it('filters both groups by title and expands matching results', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    useSelectedMonthStore(pinia).setSelectedMonthKey(month.monthKey)
+    const wrapper = mount(ObligationsPage, {
+      global: { plugins: [pinia], stubs: { Teleport: true } },
+    })
+
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Страховка'))
+    await wrapper.get('input[type="search"]').setValue('страх')
+
+    const groups = wrapper.findAll('.obligation-group')
+    expect(groups).toHaveLength(1)
+    expect(groups[0]!.attributes('open')).toBeDefined()
+    expect(groups[0]!.text()).toContain('Страховка')
+    expect(groups[0]!.text()).not.toContain('Коммунальные услуги')
     wrapper.unmount()
   })
 })

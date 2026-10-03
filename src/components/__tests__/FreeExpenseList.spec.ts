@@ -39,22 +39,23 @@ function normalizeSpaces(text: string): string {
 }
 
 describe('FreeExpenseList', () => {
-  it('shows newest spending first without changing the input array and forwards selection', async () => {
+  it('shows newest spending first without changing the input array and forwards an item action', async () => {
     const wrapper = mount(FreeExpenseList, {
-      props: { expenses, selectedId: null },
+      props: { expenses },
     })
     const items = wrapper.findAll('.free-expense-list > li')
 
     expect(items.map((item) => item.get('h3').text())).toEqual(['Кофе', 'Такси', 'Продукты'])
     expect(expenses.map((expense) => expense.id)).toEqual(['groceries', 'taxi', 'coffee'])
 
-    await wrapper.get('li:first-child button').trigger('click')
-    expect(wrapper.emitted('select')).toEqual([['coffee']])
+    await wrapper.get('li:first-child button[aria-expanded="false"]').trigger('click')
+    await wrapper.get('li:first-child .free-expense-list-item__actions button').trigger('click')
+    expect(wrapper.emitted('edit')).toEqual([['coffee']])
   })
 
   it('shows an empty state for no free expenses', () => {
     const wrapper = mount(FreeExpenseList, {
-      props: { expenses: [], selectedId: null },
+      props: { expenses: [] },
     })
 
     expect(wrapper.text()).toContain('Свободных расходов пока нет')
@@ -63,15 +64,21 @@ describe('FreeExpenseList', () => {
 })
 
 describe('FreeExpenseListItem', () => {
-  it('formats the date and amount and marks a selected action button', () => {
+  it('formats the date and amount and reveals actions on demand', async () => {
     const wrapper = mount(FreeExpenseListItem, {
-      props: { expense: expenses[0]!, selected: true },
+      props: { expense: expenses[0]! },
     })
 
     expect(wrapper.get('time').attributes('datetime')).toBe('2026-09-04')
     expect(wrapper.get('time').text()).toContain('4 сентября 2026')
     expect(normalizeSpaces(wrapper.text())).toContain('2 350,50 ₽')
-    expect(wrapper.get('button').attributes('aria-pressed')).toBe('true')
-    expect(wrapper.get('button').text()).toBe('Выбрано')
+    expect(wrapper.text()).not.toContain('Выбрать')
+    expect(wrapper.get('button').attributes('aria-expanded')).toBe('false')
+
+    await wrapper.get('button').trigger('click')
+
+    expect(wrapper.get('button[aria-expanded="true"]')).toBeDefined()
+    expect(wrapper.text()).toContain('Изменить')
+    expect(wrapper.text()).toContain('Удалить')
   })
 })

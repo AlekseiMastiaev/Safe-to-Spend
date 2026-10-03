@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import AppDialog from '@/components/AppDialog.vue'
 import IncomeList from '@/components/incomes/IncomeList.vue'
 import { invalidateData, useDataQuery } from '@/composables/useDataQuery'
 import { parseMoneyInput } from '@/domain/money'
@@ -20,29 +21,28 @@ const data = useDataQuery(async () => {
 })
 
 const incomes = computed(() => (data.value.status === 'ready' ? data.value.data.incomes : []))
-const selectedIncomeId = ref<EntityId | null>(null)
-const selectedIncome = computed(() =>
-  incomes.value.find((income) => income.id === selectedIncomeId.value),
-)
 const title = ref('')
 const amount = ref('')
 const isReceived = ref(false)
 const editingId = ref<EntityId | null>(null)
+const isIncomeDialogOpen = ref(false)
 const isSaving = ref(false)
 const formError = ref<string | null>(null)
 
-function selectIncome(id: EntityId): void {
-  selectedIncomeId.value = selectedIncomeId.value === id ? null : id
+function openIncomeForm(): void {
+  resetForm()
+  isIncomeDialogOpen.value = true
 }
 
-function editSelectedIncome(): void {
-  const income = selectedIncome.value
+function editIncome(id: EntityId): void {
+  const income = incomes.value.find((item) => item.id === id)
   if (!income) return
   editingId.value = income.id
   title.value = income.title
   amount.value = String(income.amount / 100).replace('.', ',')
   isReceived.value = income.status === 'received'
   formError.value = null
+  isIncomeDialogOpen.value = true
 }
 
 function resetForm(): void {
@@ -51,6 +51,11 @@ function resetForm(): void {
   isReceived.value = false
   editingId.value = null
   formError.value = null
+}
+
+function closeIncomeForm(): void {
+  isIncomeDialogOpen.value = false
+  resetForm()
 }
 
 async function saveIncome(): Promise<void> {
@@ -83,8 +88,7 @@ async function saveIncome(): Promise<void> {
 
     await incomeRepository.save(income)
     invalidateData()
-    selectedIncomeId.value = income.id
-    resetForm()
+    closeIncomeForm()
     notifications.notifySuccess(existing ? 'Доход обновлён' : 'Доход добавлен')
   } catch (error) {
     formError.value = error instanceof Error ? error.message : 'Не удалось сохранить доход'
@@ -93,8 +97,8 @@ async function saveIncome(): Promise<void> {
   }
 }
 
-async function toggleReceived(): Promise<void> {
-  const income = selectedIncome.value
+async function toggleReceived(id: EntityId): Promise<void> {
+  const income = incomes.value.find((item) => item.id === id)
   if (!income) return
   const timestamp = new Date().toISOString()
   const updated: Income =
@@ -112,14 +116,13 @@ async function toggleReceived(): Promise<void> {
   }
 }
 
-async function deleteSelectedIncome(): Promise<void> {
-  const income = selectedIncome.value
+async function deleteIncome(id: EntityId): Promise<void> {
+  const income = incomes.value.find((item) => item.id === id)
   if (!income || !window.confirm(`Удалить доход «${income.title}»?`)) return
   try {
     await incomeRepository.delete(income.id)
     invalidateData()
-    selectedIncomeId.value = null
-    if (editingId.value === income.id) resetForm()
+    if (editingId.value === income.id) closeIncomeForm()
     notifications.notifySuccess('Доход удалён')
   } catch {
     notifications.notifyError('Не удалось удалить доход')
@@ -129,62 +132,67 @@ async function deleteSelectedIncome(): Promise<void> {
 
 <template>
   <section class="page-stack" aria-labelledby="incomes-title">
-    <div class="page-heading">
-      <h2 id="incomes-title">Доходы</h2>
-      <p>Запланированный доход попадёт в план, а полученный — в фактический баланс.</p>
-    </div>
-
-    <form class="panel form-grid" @submit.prevent="saveIncome">
-      <h3>{{ editingId ? 'Изменить доход' : 'Добавить доход' }}</h3>
-      <label class="field">
-        <span>Название</span>
-        <input v-model="title" required autocomplete="off" placeholder="Например, зарплата" />
-      </label>
-      <label class="field">
-        <span>Сумма, ₽</span>
-        <input
-          v-model="amount"
-          required
-          inputmode="decimal"
-          autocomplete="off"
-          placeholder="80 000"
-        />
-      </label>
-      <label class="check-field">
-        <input v-model="isReceived" type="checkbox" />
-        Деньги уже получены
-      </label>
-      <p v-if="formError" class="form-error" role="alert">{{ formError }}</p>
-      <div class="button-row">
-        <button class="button" type="submit" :disabled="isSaving">
-          {{ isSaving ? 'Сохраняем…' : editingId ? 'Сохранить изменения' : 'Добавить доход' }}
-        </button>
-        <button v-if="editingId" class="button button--secondary" type="button" @click="resetForm">
-          Отмена
-        </button>
+    <div class="page-heading page-heading--with-action">
+      <div>
+        <h2 id="incomes-title">Доходы</h2>
+        <p>Запланированный доход попадёт в план, а полученный — в фактический баланс.</p>
       </div>
-    </form>
+      <button class="button" type="button" @click="openIncomeForm">+ Добавить доход</button>
+    </div>
 
     <p v-if="data.status === 'loading'" role="status">Загружаем доходы…</p>
     <p v-else-if="data.status === 'error'" class="form-error" role="alert">
       Не удалось загрузить доходы.
     </p>
     <template v-else>
-      <IncomeList :incomes="incomes" :selected-id="selectedIncomeId" @select="selectIncome" />
-      <div v-if="selectedIncome" class="panel selection-actions">
-        <strong>{{ selectedIncome.title }}</strong>
+      <IncomeList
+        :incomes="incomes"
+        @toggle-received="toggleReceived"
+        @edit="editIncome"
+        @delete="deleteIncome"
+      />
+    </template>
+
+    <AppDialog
+      v-if="isIncomeDialogOpen"
+      :title="editingId ? 'Изменить доход' : 'Новый доход'"
+      @close="closeIncomeForm"
+    >
+      <form class="form-grid" @submit.prevent="saveIncome">
+        <label class="field">
+          <span>Название</span>
+          <input
+            v-model="title"
+            required
+            autofocus
+            autocomplete="off"
+            placeholder="Например, зарплата"
+          />
+        </label>
+        <label class="field">
+          <span>Сумма, ₽</span>
+          <input
+            v-model="amount"
+            required
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="80 000"
+          />
+        </label>
+        <label class="check-field">
+          <input v-model="isReceived" type="checkbox" />
+          Деньги уже получены
+        </label>
+        <p v-if="formError" class="form-error" role="alert">{{ formError }}</p>
         <div class="button-row">
-          <button class="button button--secondary" type="button" @click="toggleReceived">
-            {{ selectedIncome.status === 'received' ? 'Вернуть в план' : 'Отметить полученным' }}
+          <button class="button" type="submit" :disabled="isSaving">
+            {{ isSaving ? 'Сохраняем…' : editingId ? 'Сохранить изменения' : 'Добавить доход' }}
           </button>
-          <button class="button button--secondary" type="button" @click="editSelectedIncome">
-            Изменить
-          </button>
-          <button class="button button--danger" type="button" @click="deleteSelectedIncome">
-            Удалить
+          <button class="button button--secondary" type="button" @click="closeIncomeForm">
+            Отмена
           </button>
         </div>
-      </div>
-    </template>
+      </form>
+    </AppDialog>
   </section>
 </template>

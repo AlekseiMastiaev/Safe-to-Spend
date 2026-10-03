@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { formatMoney } from '@/domain/money'
 import type { FreeExpense } from '@/domain/models'
 
 const props = defineProps<{
   expense: FreeExpense
-  selected: boolean
 }>()
 
 const emit = defineEmits<{
-  select: [id: FreeExpense['id']]
+  edit: [id: FreeExpense['id']]
+  delete: [id: FreeExpense['id']]
 }>()
+
+const actionsOpen = ref(false)
+const actionsId = computed(() => `free-expense-actions-${props.expense.id}`)
 
 const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
   day: 'numeric',
@@ -25,7 +28,7 @@ const formattedDate = computed(() =>
 </script>
 
 <template>
-  <article class="free-expense-list-item" :class="{ 'free-expense-list-item--selected': selected }">
+  <article class="free-expense-list-item">
     <div class="free-expense-list-item__details">
       <h3>{{ expense.title }}</h3>
       <time :datetime="expense.spentAt">{{ formattedDate }}</time>
@@ -35,12 +38,30 @@ const formattedDate = computed(() =>
 
     <button
       type="button"
-      :aria-pressed="selected"
-      :aria-label="`${selected ? 'Снять выбор' : 'Выбрать'}: ${expense.title}`"
-      @click="emit('select', expense.id)"
+      :aria-expanded="actionsOpen"
+      :aria-controls="actionsId"
+      @click="actionsOpen = !actionsOpen"
     >
-      {{ selected ? 'Выбрано' : 'Выбрать' }}
+      Действия
+      <span aria-hidden="true">{{ actionsOpen ? '−' : '+' }}</span>
     </button>
+
+    <div
+      v-if="actionsOpen"
+      :id="actionsId"
+      class="free-expense-list-item__actions"
+      role="region"
+      :aria-label="`Действия с тратой: ${expense.title}`"
+    >
+      <button type="button" @click="emit('edit', expense.id)">Изменить</button>
+      <button
+        class="free-expense-list-item__delete"
+        type="button"
+        @click="emit('delete', expense.id)"
+      >
+        Удалить
+      </button>
+    </div>
   </article>
 </template>
 
@@ -52,10 +73,6 @@ const formattedDate = computed(() =>
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-}
-
-.free-expense-list-item--selected {
-  border-color: var(--color-interactive);
 }
 
 .free-expense-list-item__details {
@@ -94,9 +111,18 @@ button {
   cursor: pointer;
 }
 
-button[aria-pressed='true'] {
-  background: var(--color-interactive);
-  color: var(--color-interactive-contrast);
+.free-expense-list-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.free-expense-list-item__delete {
+  border-color: var(--color-negative);
+  color: var(--color-negative);
 }
 
 button:focus-visible {

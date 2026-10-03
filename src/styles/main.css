@@ -123,6 +123,18 @@ textarea {
   line-height: 1.5;
 }
 
+.page-heading--with-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.page-heading--with-action > div {
+  max-width: 42rem;
+}
+
 .panel {
   padding: var(--space-4);
   border: 1px solid var(--color-border);
@@ -199,4 +211,10 @@ textarea {
 .form-error {
   margin: 0;
   color: var(--color-negative);
+}
+
+@media (max-width: 35.99rem) {
+  .page-heading--with-action .button {
+    width: 100%;
+  }
 }

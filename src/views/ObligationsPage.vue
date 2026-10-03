@@ -47,6 +47,24 @@ const openPreviews = computed(() =>
 const settledPreviews = computed(() =>
   previews.value.filter((preview) => preview.obligation.isSettled),
 )
+const searchQuery = ref('')
+const normalizedSearchQuery = computed(() => searchQuery.value.trim().toLocaleLowerCase('ru-RU'))
+const isSearching = computed(() => normalizedSearchQuery.value.length > 0)
+const filteredOpenPreviews = computed(() => {
+  if (!isSearching.value) return openPreviews.value
+  return openPreviews.value.filter((preview) =>
+    preview.obligation.title.toLocaleLowerCase('ru-RU').includes(normalizedSearchQuery.value),
+  )
+})
+const filteredSettledPreviews = computed(() => {
+  if (!isSearching.value) return settledPreviews.value
+  return settledPreviews.value.filter((preview) =>
+    preview.obligation.title.toLocaleLowerCase('ru-RU').includes(normalizedSearchQuery.value),
+  )
+})
+const hasSearchResults = computed(
+  () => filteredOpenPreviews.value.length > 0 || filteredSettledPreviews.value.length > 0,
+)
 const historyTargetId = ref<EntityId | null>(null)
 const selectedPreview = computed(() =>
   previews.value.find((preview) => preview.obligation.id === historyTargetId.value),
@@ -274,36 +292,59 @@ async function deletePayment(id: EntityId): Promise<void> {
       </button>
     </div>
 
+    <label class="field obligation-search">
+      <span>Поиск по обязательным расходам</span>
+      <input
+        v-model="searchQuery"
+        type="search"
+        autocomplete="off"
+        placeholder="Введите название расхода"
+      />
+    </label>
+
     <p v-if="data.status === 'loading'" role="status">Загружаем обязательные расходы…</p>
     <p v-else-if="data.status === 'error'" class="form-error" role="alert">
       Не удалось загрузить обязательные расходы.
     </p>
     <template v-else>
-      <section class="obligation-group" aria-labelledby="open-obligations-title">
-        <div class="obligation-group__heading">
-          <h3 id="open-obligations-title">Открытые расходы</h3>
-          <span>{{ openPreviews.length }}</span>
-        </div>
-        <ObligationList
-          :previews="openPreviews"
-          empty-message="Открытых обязательных расходов нет."
-          @show-history="historyTargetId = $event"
-          @add-payment="openPayment"
-          @edit="editObligation"
-          @toggle-settled="toggleSettled"
-          @delete="deleteObligation"
-        />
-      </section>
+      <p v-if="isSearching && !hasSearchResults" class="obligation-search__empty">
+        Расходы с таким названием не найдены.
+      </p>
 
-      <details v-if="settledPreviews.length > 0" class="settled-obligations">
+      <details
+        v-if="!isSearching || filteredOpenPreviews.length > 0"
+        class="obligation-group"
+        :open="isSearching"
+      >
+        <summary>
+          <span>Открытые расходы</span>
+          <span class="obligation-group__count">{{ filteredOpenPreviews.length }}</span>
+        </summary>
+        <div class="obligation-group__content">
+          <ObligationList
+            :previews="filteredOpenPreviews"
+            empty-message="Открытых обязательных расходов нет."
+            @show-history="historyTargetId = $event"
+            @add-payment="openPayment"
+            @edit="editObligation"
+            @toggle-settled="toggleSettled"
+            @delete="deleteObligation"
+          />
+        </div>
+      </details>
+
+      <details
+        v-if="settledPreviews.length > 0 && (!isSearching || filteredSettledPreviews.length > 0)"
+        class="obligation-group"
+        :open="isSearching"
+      >
         <summary>
           <span>Закрытые расходы</span>
-          <span class="settled-obligations__count">{{ settledPreviews.length }}</span>
+          <span class="obligation-group__count">{{ filteredSettledPreviews.length }}</span>
         </summary>
-        <div class="settled-obligations__content">
-          <p>Резерв по ним освобождён. Раскройте действия, чтобы открыть расход снова.</p>
+        <div class="obligation-group__content">
           <ObligationList
-            :previews="settledPreviews"
+            :previews="filteredSettledPreviews"
             @show-history="historyTargetId = $event"
             @add-payment="openPayment"
             @edit="editObligation"
@@ -430,24 +471,23 @@ async function deletePayment(id: EntityId): Promise<void> {
   max-width: 42rem;
 }
 
-.obligation-group {
-  display: grid;
-  gap: var(--space-3);
+.obligation-search {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
 }
 
-.obligation-group__heading {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.obligation-group__heading h3 {
+.obligation-search__empty {
   margin: 0;
-  font-size: 1rem;
+  padding: var(--space-4);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-muted);
+  text-align: center;
 }
 
-.obligation-group__heading span,
-.settled-obligations__count {
+.obligation-group__count {
   display: inline-grid;
   min-width: 1.75rem;
   height: 1.75rem;
@@ -460,29 +500,28 @@ async function deletePayment(id: EntityId): Promise<void> {
   place-items: center;
 }
 
-.settled-obligations {
-  border: 1px solid var(--color-positive-border);
+.obligation-group {
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  background: var(--color-positive-surface);
+  background: var(--color-surface);
 }
 
-.settled-obligations > summary {
+.obligation-group > summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  color: var(--color-positive-strong);
   font-weight: 700;
   cursor: pointer;
   list-style: none;
 }
 
-.settled-obligations > summary::-webkit-details-marker {
+.obligation-group > summary::-webkit-details-marker {
   display: none;
 }
 
-.settled-obligations > summary::after {
+.obligation-group > summary::after {
   content: 'Показать';
   margin-left: auto;
   color: var(--color-muted);
@@ -490,22 +529,21 @@ async function deletePayment(id: EntityId): Promise<void> {
   font-weight: 500;
 }
 
-.settled-obligations[open] > summary::after {
+.obligation-group[open] > summary::after {
   content: 'Скрыть';
 }
 
-.settled-obligations > summary:focus-visible {
+.obligation-group > summary:focus-visible {
   outline: 2px solid var(--color-interactive);
   outline-offset: 2px;
 }
 
-.settled-obligations__content {
+.obligation-group__content {
   display: grid;
   gap: var(--space-3);
   padding: 0 var(--space-3) var(--space-3);
 }
 
-.settled-obligations__content > p,
 .payment-total {
   margin: 0;
   color: var(--color-muted);
@@ -516,15 +554,15 @@ async function deletePayment(id: EntityId): Promise<void> {
     width: 100%;
   }
 
-  .settled-obligations > summary {
+  .obligation-group > summary {
     padding: var(--space-3);
   }
 
-  .settled-obligations > summary::after {
+  .obligation-group > summary::after {
     content: 'Открыть';
   }
 
-  .settled-obligations[open] > summary::after {
+  .obligation-group[open] > summary::after {
     content: 'Скрыть';
   }
 }

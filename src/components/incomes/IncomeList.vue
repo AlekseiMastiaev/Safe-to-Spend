@@ -5,11 +5,12 @@ import IncomeListItem from './IncomeListItem.vue'
 
 const props = defineProps<{
   incomes: readonly Income[]
-  selectedId: Income['id'] | null
 }>()
 
 const emit = defineEmits<{
-  select: [id: Income['id']]
+  toggleReceived: [id: Income['id']]
+  edit: [id: Income['id']]
+  delete: [id: Income['id']]
 }>()
 </script>
 
@@ -18,8 +19,9 @@ const emit = defineEmits<{
     <li v-for="income in props.incomes" :key="income.id">
       <IncomeListItem
         :income="income"
-        :selected="income.id === props.selectedId"
-        @select="emit('select', $event)"
+        @toggle-received="emit('toggleReceived', $event)"
+        @edit="emit('edit', $event)"
+        @delete="emit('delete', $event)"
       />
     </li>
   </ul>

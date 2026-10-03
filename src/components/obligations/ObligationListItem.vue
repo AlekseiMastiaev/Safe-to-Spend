@@ -129,7 +129,6 @@ const actionsId = computed(() => `obligation-actions-${props.preview.obligation.
 
 .obligation-list-item--settled {
   border-color: var(--color-positive-border);
-  background: var(--color-positive-surface);
 }
 
 .obligation-list-item__heading {

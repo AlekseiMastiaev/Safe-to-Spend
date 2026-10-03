@@ -1,19 +1,24 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue'
 import { formatMoney } from '@/domain/money'
 import type { Income } from '@/domain/models'
 
 const props = defineProps<{
   income: Income
-  selected: boolean
 }>()
 
 const emit = defineEmits<{
-  select: [id: Income['id']]
+  toggleReceived: [id: Income['id']]
+  edit: [id: Income['id']]
+  delete: [id: Income['id']]
 }>()
+
+const actionsOpen = ref(false)
+const actionsId = computed(() => `income-actions-${props.income.id}`)
 </script>
 
 <template>
-  <article class="income-list-item" :class="{ 'income-list-item--selected': props.selected }">
+  <article class="income-list-item">
     <div class="income-list-item__details">
       <h3>{{ props.income.title }}</h3>
       <span v-if="props.income.status === 'received'" class="income-list-item__status--received">
@@ -26,12 +31,33 @@ const emit = defineEmits<{
 
     <button
       type="button"
-      :aria-pressed="props.selected"
-      :aria-label="`${props.selected ? 'Снять выбор' : 'Выбрать'}: ${props.income.title}`"
-      @click="emit('select', props.income.id)"
+      :aria-expanded="actionsOpen"
+      :aria-controls="actionsId"
+      @click="actionsOpen = !actionsOpen"
     >
-      {{ props.selected ? 'Выбрано' : 'Выбрать' }}
+      Действия
+      <span aria-hidden="true">{{ actionsOpen ? '−' : '+' }}</span>
     </button>
+
+    <div
+      v-if="actionsOpen"
+      :id="actionsId"
+      class="income-list-item__actions"
+      role="region"
+      :aria-label="`Действия с доходом: ${props.income.title}`"
+    >
+      <button type="button" @click="emit('toggleReceived', props.income.id)">
+        {{ props.income.status === 'received' ? 'Вернуть в план' : 'Отметить полученным' }}
+      </button>
+      <button type="button" @click="emit('edit', props.income.id)">Изменить</button>
+      <button
+        class="income-list-item__delete"
+        type="button"
+        @click="emit('delete', props.income.id)"
+      >
+        Удалить
+      </button>
+    </div>
   </article>
 </template>
 
@@ -43,10 +69,6 @@ const emit = defineEmits<{
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-}
-
-.income-list-item--selected {
-  border-color: var(--color-interactive);
 }
 
 .income-list-item__details {
@@ -96,9 +118,18 @@ button {
   cursor: pointer;
 }
 
-button[aria-pressed='true'] {
-  background: var(--color-interactive);
-  color: var(--color-interactive-contrast);
+.income-list-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.income-list-item__delete {
+  border-color: var(--color-negative);
+  color: var(--color-negative);
 }
 
 button:focus-visible {

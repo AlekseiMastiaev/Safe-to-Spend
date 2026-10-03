@@ -9,13 +9,10 @@ defineProps<{
   <section class="primary-balance" :class="`primary-balance--${state}`">
     <h3>Безопасный остаток</h3>
     <p class="primary-balance__amount">{{ amount }}</p>
-    <p v-if="state === 'positive'" class="primary-balance__explanation">
-      Можно потратить после резервирования обязательных расходов
+    <p v-if="state === 'zero'" class="primary-balance__explanation">Свободного остатка пока нет</p>
+    <p v-else-if="state === 'negative'" class="primary-balance__explanation">
+      Расходы и резервы превышают полученные деньги
     </p>
-    <p v-else-if="state === 'zero'" class="primary-balance__explanation">
-      Свободного остатка пока нет
-    </p>
-    <p v-else class="primary-balance__explanation">Расходы и резервы превышают полученные деньги</p>
   </section>
 </template>
 

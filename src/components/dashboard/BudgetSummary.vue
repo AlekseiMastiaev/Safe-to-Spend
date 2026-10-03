@@ -1,23 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { formatMoney } from '@/domain/money'
-import type { BudgetSummary as BudgetSummaryModel, MoneyMinorUnits } from '@/domain/models'
+import type { BudgetSummary as BudgetSummaryModel } from '@/domain/models'
 import BudgetMetric from './BudgetMetric.vue'
-import PaymentProgress from './PaymentProgress.vue'
 import PrimaryBalanceCard from './PrimaryBalanceCard.vue'
-
-interface PaymentPreview {
-  id: string
-  title: string
-  plannedAmount: MoneyMinorUnits
-  actualPaid: MoneyMinorUnits
-  remainingReserve: MoneyMinorUnits
-  isSettled: boolean
-}
 
 const props = defineProps<{
   summary: BudgetSummaryModel
-  paymentPreviews: readonly PaymentPreview[]
 }>()
 
 const balanceState = computed(() => {
@@ -72,18 +61,6 @@ const metrics = computed(() => [
         :detail="metric.detail"
       />
     </div>
-    <div v-if="paymentPreviews.length > 0" class="budget-summary__obligations">
-      <h3>Обязательные расходы</h3>
-      <PaymentProgress
-        v-for="paymentPreview in paymentPreviews"
-        :key="paymentPreview.id"
-        :title="paymentPreview.title"
-        :planned-amount="paymentPreview.plannedAmount"
-        :actual-paid="paymentPreview.actualPaid"
-        :remaining-reserve="paymentPreview.remainingReserve"
-        :is-settled="paymentPreview.isSettled"
-      />
-    </div>
   </section>
 </template>
 
@@ -95,14 +72,6 @@ const metrics = computed(() => [
 .budget-summary__metrics {
   display: grid;
   gap: var(--space-3);
-}
-.budget-summary__obligations {
-  display: grid;
-  gap: var(--space-3);
-}
-h3 {
-  margin: 0;
-  font-size: var(--font-size-lg);
 }
 @media (min-width: 48rem) {
   .budget-summary__metrics {
