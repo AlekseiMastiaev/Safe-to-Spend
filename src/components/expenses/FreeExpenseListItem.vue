@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import AppIcon from '@/components/AppIcon.vue'
 import { formatMoney } from '@/domain/money'
 import type { FreeExpense } from '@/domain/models'
 
@@ -37,13 +38,14 @@ const formattedDate = computed(() =>
     <p class="free-expense-list-item__amount">{{ formatMoney(expense.amount) }}</p>
 
     <button
+      class="free-expense-list-item__actions-toggle"
       type="button"
+      :aria-label="`Действия с тратой: ${expense.title}`"
       :aria-expanded="actionsOpen"
       :aria-controls="actionsId"
       @click="actionsOpen = !actionsOpen"
     >
-      Действия
-      <span aria-hidden="true">{{ actionsOpen ? '−' : '+' }}</span>
+      <AppIcon name="more-horizontal" />
     </button>
 
     <div
@@ -109,6 +111,27 @@ button {
   background: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
+}
+
+.free-expense-list-item__actions-toggle {
+  display: inline-grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border-color: transparent;
+  border-radius: 50%;
+  color: var(--color-muted);
+  place-items: center;
+}
+
+.free-expense-list-item__actions-toggle:hover,
+.free-expense-list-item__actions-toggle[aria-expanded='true'] {
+  color: var(--color-interactive);
+  background: var(--color-interactive-subtle);
+}
+
+.free-expense-list-item__actions-toggle :deep(.app-icon) {
+  font-size: 1.25rem;
 }
 
 .free-expense-list-item__actions {

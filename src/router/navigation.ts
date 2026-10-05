@@ -10,11 +10,22 @@ export const APP_ROUTE_NAMES = {
 
 export type AppRouteName = (typeof APP_ROUTE_NAMES)[keyof typeof APP_ROUTE_NAMES]
 
-export interface NavigationItem {
+interface NavigationItemBase {
   label: string
-  shortLabel: string
   routeName: AppRouteName
 }
+
+type TextNavigationItem = NavigationItemBase & {
+  shortLabel: string
+  mobileIcon?: never
+}
+
+type IconNavigationItem = NavigationItemBase & {
+  shortLabel?: never
+  mobileIcon: 'settings'
+}
+
+export type NavigationItem = TextNavigationItem | IconNavigationItem
 
 export const navigationItems = [
   {
@@ -44,7 +55,7 @@ export const navigationItems = [
   },
   {
     label: 'Настройки',
-    shortLabel: 'Настр.',
+    mobileIcon: 'settings',
     routeName: APP_ROUTE_NAMES.settings,
   },
 ] as const satisfies readonly NavigationItem[]

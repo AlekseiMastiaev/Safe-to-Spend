@@ -62,10 +62,13 @@ describe('IncomeListItem', () => {
     })
 
     expect(wrapper.text()).not.toContain('Выбрать')
-    expect(wrapper.get('button').attributes('aria-expanded')).toBe('false')
+    const actionsToggle = wrapper.get('button[aria-label="Действия с доходом: Ожидаемый доход"]')
+    expect(actionsToggle.attributes('aria-expanded')).toBe('false')
+    expect(actionsToggle.text()).toBe('')
+    expect(actionsToggle.find('.app-icon').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('Отметить полученным')
 
-    await wrapper.get('button').trigger('click')
+    await actionsToggle.trigger('click')
 
     expect(wrapper.get('button[aria-expanded="true"]')).toBeDefined()
     expect(wrapper.text()).toContain('Отметить полученным')

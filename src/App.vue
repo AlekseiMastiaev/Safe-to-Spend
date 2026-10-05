@@ -2,6 +2,7 @@
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/AppLayout.vue'
+import AppLoader from '@/components/AppLoader.vue'
 import { useDataQuery } from '@/composables/useDataQuery'
 import { getCurrentMonthKey } from '@/domain/month'
 import { APP_ROUTE_NAMES } from '@/router/navigation'
@@ -61,25 +62,18 @@ function reloadPage(): void {
 </script>
 
 <template>
-  <main
-    v-if="auth.status === 'idle' || auth.status === 'loading'"
-    class="startup-state"
-    role="status"
-  >
-    Проверяем вход…
-  </main>
+  <AppLoader v-if="auth.status === 'idle' || auth.status === 'loading'" message="Проверяем вход…" />
   <main v-else-if="auth.status === 'error'" class="startup-state" role="alert">
     <p>Не удалось проверить сессию. Обновите страницу и попробуйте снова.</p>
     <button type="button" @click="reloadPage">Обновить</button>
   </main>
   <AuthPage v-else-if="!auth.isAuthenticated" />
-  <main
+  <AppLoader
     v-else-if="months.status === 'idle' || months.status === 'loading'"
-    class="startup-state"
-    role="status"
-  >
-    {{ persistenceMode === 'cloud' ? 'Загружаем облачный бюджет…' : 'Открываем локальные данные…' }}
-  </main>
+    :message="
+      persistenceMode === 'cloud' ? 'Загружаем облачный бюджет…' : 'Открываем локальные данные…'
+    "
+  />
   <main v-else-if="months.status === 'error'" class="startup-state" role="alert">
     <p>
       {{
@@ -91,7 +85,7 @@ function reloadPage(): void {
     <button type="button" @click="reloadPage">Повторить</button>
   </main>
   <AppLayout v-else-if="showLayout" />
-  <main v-else class="startup-state" role="status">Открываем нужную страницу…</main>
+  <AppLoader v-else message="Открываем нужную страницу…" />
 </template>
 
 <style scoped>

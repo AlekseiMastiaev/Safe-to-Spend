@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import AppBrand from '@/components/AppBrand.vue'
+
 const props = defineProps<{
   title: string
 }>()
@@ -6,7 +8,7 @@ const props = defineProps<{
 
 <template>
   <header class="app-header">
-    <h1>{{ props.title }}</h1>
+    <h1><AppBrand :name="props.title" /></h1>
   </header>
 </template>
 

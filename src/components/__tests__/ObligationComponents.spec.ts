@@ -58,11 +58,16 @@ describe('ObligationListItem', () => {
   it('keeps secondary actions collapsed until the user asks for them', async () => {
     const wrapper = mount(ObligationListItem, { props: { preview } })
 
-    expect(wrapper.find('button[aria-expanded="false"]').exists()).toBe(true)
+    const actionsToggle = wrapper.get(
+      'button[aria-label="Действия с расходом: Коммунальные услуги"]',
+    )
+    expect(actionsToggle.attributes('aria-expanded')).toBe('false')
+    expect(actionsToggle.text()).toBe('')
+    expect(actionsToggle.find('.app-icon').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('Закрыть расход')
     expect(wrapper.text()).not.toContain('Изменить')
 
-    await wrapper.get('button[aria-expanded="false"]').trigger('click')
+    await actionsToggle.trigger('click')
 
     expect(wrapper.get('button[aria-expanded="true"]')).toBeDefined()
     expect(wrapper.text()).toContain('Закрыть расход')

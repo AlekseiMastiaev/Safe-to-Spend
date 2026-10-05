@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import AppDialog from '@/components/AppDialog.vue'
+import AppIcon from '@/components/AppIcon.vue'
 import ObligationList from '@/components/obligations/ObligationList.vue'
 import PaymentHistoryDialog from '@/components/obligations/PaymentHistoryDialog.vue'
 import { createObligationPreview } from '@/components/obligations/preview'
@@ -319,6 +320,7 @@ async function deletePayment(id: EntityId): Promise<void> {
         <summary>
           <span>Открытые расходы</span>
           <span class="obligation-group__count">{{ filteredOpenPreviews.length }}</span>
+          <AppIcon class="obligation-group__chevron" name="chevron-down" />
         </summary>
         <div class="obligation-group__content">
           <ObligationList
@@ -341,6 +343,7 @@ async function deletePayment(id: EntityId): Promise<void> {
         <summary>
           <span>Закрытые расходы</span>
           <span class="obligation-group__count">{{ filteredSettledPreviews.length }}</span>
+          <AppIcon class="obligation-group__chevron" name="chevron-down" />
         </summary>
         <div class="obligation-group__content">
           <ObligationList
@@ -491,6 +494,7 @@ async function deletePayment(id: EntityId): Promise<void> {
   display: inline-grid;
   min-width: 1.75rem;
   height: 1.75rem;
+  margin-left: auto;
   padding: 0 var(--space-2);
   border-radius: 999px;
   background: var(--color-interactive-subtle);
@@ -521,16 +525,15 @@ async function deletePayment(id: EntityId): Promise<void> {
   display: none;
 }
 
-.obligation-group > summary::after {
-  content: 'Показать';
-  margin-left: auto;
+.obligation-group__chevron {
+  flex: 0 0 auto;
   color: var(--color-muted);
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 1.25rem;
+  transition: transform 160ms ease;
 }
 
-.obligation-group[open] > summary::after {
-  content: 'Скрыть';
+.obligation-group[open] .obligation-group__chevron {
+  transform: rotate(180deg);
 }
 
 .obligation-group > summary:focus-visible {
@@ -557,13 +560,11 @@ async function deletePayment(id: EntityId): Promise<void> {
   .obligation-group > summary {
     padding: var(--space-3);
   }
+}
 
-  .obligation-group > summary::after {
-    content: 'Открыть';
-  }
-
-  .obligation-group[open] > summary::after {
-    content: 'Скрыть';
+@media (prefers-reduced-motion: reduce) {
+  .obligation-group__chevron {
+    transition: none;
   }
 }
 </style>

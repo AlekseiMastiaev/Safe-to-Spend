@@ -36,7 +36,7 @@
   --font-size-lg: 1.25rem;
   --font-size-xl: 1.5rem;
   --content-max-width: 64rem;
-  --mobile-navigation-height: 4rem;
+  --mobile-navigation-height: 3.25rem;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -73,6 +73,7 @@
 html {
   min-width: 320px;
   min-height: 100%;
+  touch-action: manipulation;
 }
 
 body {

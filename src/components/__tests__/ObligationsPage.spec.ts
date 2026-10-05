@@ -72,6 +72,10 @@ describe('ObligationsPage interface', () => {
     expect(groups[1]!.text()).toContain('Страховка')
     expect(groups[0]!.attributes('open')).toBeUndefined()
     expect(groups[1]!.attributes('open')).toBeUndefined()
+    const summaries = wrapper.findAll('summary')
+    expect(summaries[0]!.text()).not.toContain('Открыть')
+    expect(summaries[0]!.text()).not.toContain('Показать')
+    expect(summaries[0]!.find('.obligation-group__chevron').exists()).toBe(true)
 
     await wrapper.get('button').trigger('click')
     expect(wrapper.get('dialog').attributes('aria-labelledby')).toBeTruthy()

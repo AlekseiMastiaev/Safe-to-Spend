@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
+import AppIcon from '@/components/AppIcon.vue'
 import type { NavigationItem } from '@/router/navigation'
 
 defineProps<{
@@ -15,7 +16,8 @@ defineProps<{
       :to="{ name: item.routeName }"
       :aria-label="item.label"
     >
-      {{ item.shortLabel }}
+      <AppIcon v-if="item.mobileIcon" :name="item.mobileIcon" />
+      <template v-else>{{ item.shortLabel }}</template>
     </RouterLink>
   </nav>
 </template>
@@ -35,13 +37,20 @@ defineProps<{
 }
 
 a {
+  display: grid;
   min-width: 0;
-  padding: calc(var(--space-2) + var(--space-1)) var(--space-1);
+  min-height: var(--mobile-navigation-height);
+  padding: var(--space-3) var(--space-1);
   color: var(--color-muted);
   font-size: var(--font-size-sm);
   line-height: 1.2;
+  place-items: center;
   text-align: center;
   text-decoration: none;
+}
+
+a :deep(.app-icon) {
+  font-size: 1.25rem;
 }
 
 a.router-link-exact-active {

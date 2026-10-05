@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import AppIcon from '@/components/AppIcon.vue'
 import { formatMoney } from '@/domain/money'
 import type { EntityId } from '@/domain/models'
 import ObligationProgress from './ObligationProgress.vue'
@@ -85,13 +86,14 @@ const actionsId = computed(() => `obligation-actions-${props.preview.obligation.
         История
       </button>
       <button
+        class="obligation-list-item__actions-toggle"
         type="button"
+        :aria-label="`Действия с расходом: ${preview.obligation.title}`"
         :aria-expanded="actionsOpen"
         :aria-controls="actionsId"
         @click="actionsOpen = !actionsOpen"
       >
-        Действия
-        <span aria-hidden="true">{{ actionsOpen ? '−' : '+' }}</span>
+        <AppIcon name="more-horizontal" />
       </button>
     </div>
 
@@ -177,6 +179,27 @@ button {
   background: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
+}
+
+.obligation-list-item__actions-toggle {
+  display: inline-grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border-color: transparent;
+  border-radius: 50%;
+  color: var(--color-muted);
+  place-items: center;
+}
+
+.obligation-list-item__actions-toggle:hover,
+.obligation-list-item__actions-toggle[aria-expanded='true'] {
+  color: var(--color-interactive);
+  background: var(--color-interactive-subtle);
+}
+
+.obligation-list-item__actions-toggle :deep(.app-icon) {
+  font-size: 1.25rem;
 }
 
 .obligation-list-item__settled-summary {
