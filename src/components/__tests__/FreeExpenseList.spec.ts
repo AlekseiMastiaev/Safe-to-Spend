@@ -49,7 +49,7 @@ describe('FreeExpenseList', () => {
     expect(expenses.map((expense) => expense.id)).toEqual(['groceries', 'taxi', 'coffee'])
 
     await wrapper.get('li:first-child button[aria-expanded="false"]').trigger('click')
-    await wrapper.get('li:first-child .free-expense-list-item__actions button').trigger('click')
+    await wrapper.get('li:first-child .item-actions-menu__popup button').trigger('click')
     expect(wrapper.emitted('edit')).toEqual([['coffee']])
   })
 
@@ -83,5 +83,11 @@ describe('FreeExpenseListItem', () => {
     expect(wrapper.get('button[aria-expanded="true"]')).toBeDefined()
     expect(wrapper.text()).toContain('Изменить')
     expect(wrapper.text()).toContain('Удалить')
+
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('.item-actions-menu__popup').exists()).toBe(false)
+    expect(actionsToggle.attributes('aria-expanded')).toBe('false')
   })
 })

@@ -41,7 +41,7 @@ describe('IncomeList', () => {
     expect(wrapper.text()).toContain('Запланирован')
 
     await wrapper.get('li:first-child button[aria-expanded="false"]').trigger('click')
-    await wrapper.get('li:first-child .income-list-item__actions button').trigger('click')
+    await wrapper.get('li:first-child .item-actions-menu__popup button').trigger('click')
     expect(wrapper.emitted('toggleReceived')).toEqual([[receivedIncome.id]])
   })
 
@@ -67,6 +67,10 @@ describe('IncomeListItem', () => {
     expect(actionsToggle.text()).toBe('')
     expect(actionsToggle.find('.app-icon').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('Отметить полученным')
+    expect(wrapper.get('.income-list-item__status').text()).toBe('Запланирован')
+    expect(wrapper.get('.income-list-item__status').classes()).toContain(
+      'income-list-item__status--planned',
+    )
 
     await actionsToggle.trigger('click')
 

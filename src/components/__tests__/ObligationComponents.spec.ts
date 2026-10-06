@@ -45,12 +45,16 @@ describe('ObligationListItem', () => {
     const text = normalizeSpaces(wrapper.text())
 
     expect(wrapper.get('h3').text()).toBe('Коммунальные услуги')
-    expect(text).toContain('Частично оплачен')
+    expect(text).not.toContain('Частично оплачен')
+    expect(text).not.toContain('Не начат')
     expect(text).toContain('10 000 ₽')
     expect(text).toContain('6 000 ₽')
     expect(text).toContain('4 000 ₽')
     expect(text).not.toContain('Экономия')
 
+    await wrapper
+      .get('button[aria-label="Действия с расходом: Коммунальные услуги"]')
+      .trigger('click')
     await wrapper.get('button[aria-label="История платежей: Коммунальные услуги"]').trigger('click')
     expect(wrapper.emitted('showHistory')).toEqual([['utilities']])
   })
@@ -70,6 +74,8 @@ describe('ObligationListItem', () => {
     await actionsToggle.trigger('click')
 
     expect(wrapper.get('button[aria-expanded="true"]')).toBeDefined()
+    expect(wrapper.text()).toContain('Добавить платёж')
+    expect(wrapper.text()).toContain('История')
     expect(wrapper.text()).toContain('Закрыть расход')
     expect(wrapper.text()).toContain('Изменить')
     expect(wrapper.text()).toContain('Удалить')
@@ -88,7 +94,7 @@ describe('ObligationListItem', () => {
     })
 
     const text = normalizeSpaces(wrapper.text())
-    expect(text).toContain('Закрыт')
+    expect(text).not.toContain('Закрыт')
     expect(text).toContain('Экономия после закрытия: 4 000 ₽')
     expect(wrapper.classes()).toContain('obligation-list-item--settled')
     expect(wrapper.find('progress').exists()).toBe(false)
@@ -98,6 +104,13 @@ describe('ObligationListItem', () => {
       ),
     ).toBe('6 000 ₽')
     expect(wrapper.text()).not.toContain('Добавить платёж')
+
+    await wrapper
+      .get('button[aria-label="Действия с расходом: Коммунальные услуги"]')
+      .trigger('click')
+
+    expect(wrapper.text()).toContain('Открыть снова')
+    expect(wrapper.text()).not.toContain('Добавить платёж')
   })
 })
 
@@ -105,6 +118,9 @@ describe('ObligationList', () => {
   it('forwards the history event from its child to the page', async () => {
     const wrapper = mount(ObligationList, { props: { previews: [preview] } })
 
+    await wrapper
+      .get('button[aria-label="Действия с расходом: Коммунальные услуги"]')
+      .trigger('click')
     await wrapper.get('button[aria-label="История платежей: Коммунальные услуги"]').trigger('click')
 
     expect(wrapper.emitted('showHistory')).toEqual([['utilities']])

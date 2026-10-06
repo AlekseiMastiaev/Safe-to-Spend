@@ -146,6 +146,7 @@ textarea {
 .field {
   display: grid;
   gap: var(--space-1);
+  min-width: 0;
 }
 
 .field span {
@@ -157,11 +158,17 @@ textarea {
 .field select,
 .field textarea {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   padding: 0.7rem 0.75rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-text);
   background: var(--color-background);
+}
+
+.field input[type='date'] {
+  min-inline-size: 0;
 }
 
 .check-field {

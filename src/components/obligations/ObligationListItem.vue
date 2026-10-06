@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import AppIcon from '@/components/AppIcon.vue'
+import ItemActionsMenu from '@/components/ItemActionsMenu.vue'
 import { formatMoney } from '@/domain/money'
 import type { EntityId } from '@/domain/models'
 import ObligationProgress from './ObligationProgress.vue'
 import type { ObligationPreview } from './preview'
 
-const props = defineProps<{
+defineProps<{
   preview: ObligationPreview
 }>()
 
@@ -17,15 +16,6 @@ const emit = defineEmits<{
   toggleSettled: [id: EntityId]
   delete: [id: EntityId]
 }>()
-
-const state = computed(() => {
-  if (props.preview.obligation.isSettled) return 'Закрыт'
-  if (props.preview.actualPaid > 0) return 'Частично оплачен'
-  return 'Не начат'
-})
-
-const actionsOpen = ref(false)
-const actionsId = computed(() => `obligation-actions-${props.preview.obligation.id}`)
 </script>
 
 <template>
@@ -35,12 +25,6 @@ const actionsId = computed(() => `obligation-actions-${props.preview.obligation.
   >
     <div class="obligation-list-item__heading">
       <h3>{{ preview.obligation.title }}</h3>
-      <span
-        class="obligation-list-item__state"
-        :class="{ 'obligation-list-item__state--settled': preview.obligation.isSettled }"
-      >
-        {{ state }}
-      </span>
     </div>
 
     <ObligationProgress
@@ -69,10 +53,9 @@ const actionsId = computed(() => `obligation-actions-${props.preview.obligation.
       Перерасход: {{ formatMoney(preview.overspend) }}
     </p>
 
-    <div class="obligation-list-item__primary-actions">
+    <ItemActionsMenu :label="`Действия с расходом: ${preview.obligation.title}`">
       <button
         v-if="!preview.obligation.isSettled"
-        class="obligation-list-item__payment"
         type="button"
         @click="emit('addPayment', preview.obligation.id)"
       >
@@ -85,45 +68,27 @@ const actionsId = computed(() => `obligation-actions-${props.preview.obligation.
       >
         История
       </button>
-      <button
-        class="obligation-list-item__actions-toggle"
-        type="button"
-        :aria-label="`Действия с расходом: ${preview.obligation.title}`"
-        :aria-expanded="actionsOpen"
-        :aria-controls="actionsId"
-        @click="actionsOpen = !actionsOpen"
-      >
-        <AppIcon name="more-horizontal" />
-      </button>
-    </div>
-
-    <div
-      v-if="actionsOpen"
-      :id="actionsId"
-      class="obligation-list-item__actions"
-      role="region"
-      :aria-label="`Действия с расходом: ${preview.obligation.title}`"
-    >
       <button type="button" @click="emit('toggleSettled', preview.obligation.id)">
         {{ preview.obligation.isSettled ? 'Открыть снова' : 'Закрыть расход' }}
       </button>
       <button type="button" @click="emit('edit', preview.obligation.id)">Изменить</button>
       <button
-        class="obligation-list-item__delete"
+        class="item-actions-menu__danger"
         type="button"
         @click="emit('delete', preview.obligation.id)"
       >
         Удалить
       </button>
-    </div>
+    </ItemActionsMenu>
   </article>
 </template>
 
 <style scoped>
 .obligation-list-item {
+  position: relative;
   display: grid;
   gap: var(--space-3);
-  padding: var(--space-3);
+  padding: var(--space-3) calc(var(--space-3) + 3rem) var(--space-3) var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
@@ -134,11 +99,7 @@ const actionsId = computed(() => `obligation-actions-${props.preview.obligation.
 }
 
 .obligation-list-item__heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+  min-width: 0;
 }
 
 h3,
@@ -150,56 +111,12 @@ h3 {
   font-size: 1rem;
 }
 
-.obligation-list-item__state {
-  padding: var(--space-1) var(--space-2);
-  border-radius: 999px;
-  background: var(--color-interactive-subtle);
-  color: var(--color-muted);
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.obligation-list-item__state--settled {
-  background: var(--color-positive-badge);
-  color: var(--color-positive-strong);
-}
-
 .obligation-list-item__savings {
   color: var(--color-positive);
 }
 
 .obligation-list-item__overspend {
   color: var(--color-negative);
-}
-
-button {
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-interactive);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-text);
-  cursor: pointer;
-}
-
-.obligation-list-item__actions-toggle {
-  display: inline-grid;
-  width: 2.5rem;
-  height: 2.5rem;
-  padding: 0;
-  border-color: transparent;
-  border-radius: 50%;
-  color: var(--color-muted);
-  place-items: center;
-}
-
-.obligation-list-item__actions-toggle:hover,
-.obligation-list-item__actions-toggle[aria-expanded='true'] {
-  color: var(--color-interactive);
-  background: var(--color-interactive-subtle);
-}
-
-.obligation-list-item__actions-toggle :deep(.app-icon) {
-  font-size: 1.25rem;
 }
 
 .obligation-list-item__settled-summary {
@@ -221,38 +138,5 @@ button {
 .obligation-list-item__settled-summary dd {
   margin: var(--space-1) 0 0;
   font-weight: 700;
-}
-
-.obligation-list-item__primary-actions,
-.obligation-list-item__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.obligation-list-item__payment {
-  color: var(--color-interactive-contrast);
-  background: var(--color-interactive);
-}
-
-.obligation-list-item__actions {
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-border);
-}
-
-.obligation-list-item__delete {
-  border-color: var(--color-negative);
-  color: var(--color-negative);
-}
-
-button:focus-visible {
-  outline: 2px solid var(--color-interactive);
-  outline-offset: 2px;
-}
-
-@media (max-width: 35.99rem) {
-  .obligation-list-item__primary-actions > button {
-    flex: 1 1 auto;
-  }
 }
 </style>

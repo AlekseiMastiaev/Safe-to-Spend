@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import AppDialog from '@/components/AppDialog.vue'
 import { invalidateData } from '@/composables/useDataQuery'
 import { dataMaintenanceRepository, persistenceMode } from '@/shared/persistence'
 import { useAuthStore } from '@/stores/auth'
@@ -10,6 +11,7 @@ const notifications = useNotificationStore()
 const selectedMonth = useSelectedMonthStore()
 const auth = useAuthStore()
 const isResetting = ref(false)
+const isResetDialogOpen = ref(false)
 
 async function exportBackup(): Promise<void> {
   try {
@@ -35,15 +37,11 @@ async function exportBackup(): Promise<void> {
 }
 
 async function resetApplication(): Promise<void> {
-  if (
-    isResetting.value ||
-    !window.confirm('Удалить все месяцы, доходы, расходы и настройки? Это действие необратимо.')
-  ) {
-    return
-  }
+  if (isResetting.value) return
   isResetting.value = true
   try {
     await dataMaintenanceRepository.clearAll()
+    isResetDialogOpen.value = false
     selectedMonth.clearSelectedMonth()
     invalidateData()
     notifications.notifySuccess(
@@ -54,6 +52,10 @@ async function resetApplication(): Promise<void> {
   } finally {
     isResetting.value = false
   }
+}
+
+function closeResetDialog(): void {
+  if (!isResetting.value) isResetDialogOpen.value = false
 }
 
 async function signOut(): Promise<void> {
@@ -101,10 +103,46 @@ async function signOut(): Promise<void> {
         class="button button--danger"
         type="button"
         :disabled="isResetting"
-        @click="resetApplication"
+        @click="isResetDialogOpen = true"
       >
         {{ isResetting ? 'Удаляем…' : 'Удалить все данные' }}
       </button>
     </div>
+
+    <AppDialog v-if="isResetDialogOpen" title="Удалить все данные?" @close="closeResetDialog">
+      <div class="reset-confirmation">
+        <p>Будут удалены все месяцы, доходы, расходы и настройки. Это действие необратимо.</p>
+        <div class="button-row">
+          <button
+            class="button button--danger"
+            type="button"
+            :disabled="isResetting"
+            @click="resetApplication"
+          >
+            {{ isResetting ? 'Удаляем…' : 'Да, удалить' }}
+          </button>
+          <button
+            class="button button--secondary"
+            type="button"
+            :disabled="isResetting"
+            @click="closeResetDialog"
+          >
+            Нет, оставить
+          </button>
+        </div>
+      </div>
+    </AppDialog>
   </section>
 </template>
+
+<style scoped>
+.reset-confirmation {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.reset-confirmation p {
+  margin: 0;
+  line-height: 1.5;
+}
+</style>
