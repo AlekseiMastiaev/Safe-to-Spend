@@ -160,24 +160,19 @@ async function deleteIncome(id: EntityId): Promise<void> {
     >
       <form class="form-grid" @submit.prevent="saveIncome">
         <label class="field">
-          <span>Название</span>
-          <input
-            v-model="title"
-            required
-            autofocus
-            autocomplete="off"
-            placeholder="Например, зарплата"
-          />
-        </label>
-        <label class="field">
           <span>Сумма, ₽</span>
           <input
             v-model="amount"
             required
+            autofocus
             inputmode="decimal"
             autocomplete="off"
             placeholder="80 000"
           />
+        </label>
+        <label class="field">
+          <span>Название</span>
+          <input v-model="title" required autocomplete="off" placeholder="Например, зарплата" />
         </label>
         <label class="check-field">
           <input v-model="isReceived" type="checkbox" />

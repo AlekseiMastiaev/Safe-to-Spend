@@ -88,18 +88,23 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeFromOutsi
   width: 2.5rem;
   height: 2.5rem;
   padding: 0;
-  border: 1px solid transparent;
-  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-muted);
   cursor: pointer;
   place-items: center;
 }
 
-.item-actions-menu__trigger:hover,
-.item-actions-menu__trigger[aria-expanded='true'] {
+.item-actions-menu__trigger:hover {
   color: var(--color-interactive);
   background: var(--color-interactive-subtle);
+}
+
+.item-actions-menu__trigger[aria-expanded='true'],
+.item-actions-menu__trigger:active {
+  color: var(--color-interactive);
+  background: transparent;
 }
 
 .item-actions-menu__trigger:focus-visible,
@@ -119,7 +124,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeFromOutsi
   display: grid;
   width: min(15rem, calc(100vw - 2 * var(--space-3)));
   gap: var(--space-1);
-  padding: calc(2.5rem + var(--space-2)) var(--space-2) var(--space-2);
+  padding: var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
@@ -140,6 +145,10 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeFromOutsi
 
 .item-actions-menu__popup :slotted(button:hover) {
   background: var(--color-interactive-subtle);
+}
+
+.item-actions-menu__popup :slotted(button:first-child) {
+  margin-right: calc(2.5rem + var(--space-2));
 }
 
 .item-actions-menu__popup :slotted(.item-actions-menu__danger) {

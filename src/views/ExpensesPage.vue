@@ -128,24 +128,19 @@ async function deleteExpense(id: EntityId): Promise<void> {
     >
       <form class="form-grid" @submit.prevent="saveExpense">
         <label class="field">
-          <span>Название</span>
-          <input
-            v-model="title"
-            required
-            autofocus
-            autocomplete="off"
-            placeholder="Например, продукты"
-          />
-        </label>
-        <label class="field">
           <span>Сумма, ₽</span>
           <input
             v-model="amount"
             required
+            autofocus
             inputmode="decimal"
             autocomplete="off"
             placeholder="1 250"
           />
+        </label>
+        <label class="field">
+          <span>Название</span>
+          <input v-model="title" required autocomplete="off" placeholder="Например, продукты" />
         </label>
         <label class="field">
           <span>Дата</span>

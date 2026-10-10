@@ -365,23 +365,23 @@ async function deletePayment(id: EntityId): Promise<void> {
     >
       <form class="form-grid" @submit.prevent="saveObligation">
         <label class="field">
-          <span>Название</span>
-          <input
-            v-model="title"
-            required
-            autofocus
-            autocomplete="off"
-            placeholder="Например, коммунальные услуги"
-          />
-        </label>
-        <label class="field">
           <span>План, ₽</span>
           <input
             v-model="plannedAmount"
             required
+            autofocus
             inputmode="decimal"
             autocomplete="off"
             placeholder="10 000"
+          />
+        </label>
+        <label class="field">
+          <span>Название</span>
+          <input
+            v-model="title"
+            required
+            autocomplete="off"
+            placeholder="Например, коммунальные услуги"
           />
         </label>
         <p v-if="obligationError" class="form-error" role="alert">{{ obligationError }}</p>
