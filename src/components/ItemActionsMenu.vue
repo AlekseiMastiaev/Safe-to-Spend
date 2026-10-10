@@ -107,6 +107,10 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeFromOutsi
   background: transparent;
 }
 
+.item-actions-menu__trigger[aria-expanded='true'] {
+  border-color: transparent;
+}
+
 .item-actions-menu__trigger:focus-visible,
 .item-actions-menu__popup :slotted(button:focus-visible) {
   outline: 2px solid var(--color-interactive);
