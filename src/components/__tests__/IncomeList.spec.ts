@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import type { Income } from '@/domain/models'
+import type { CarryoverIncome, Income } from '@/domain/models'
 import IncomeList from '../incomes/IncomeList.vue'
 import IncomeListItem from '../incomes/IncomeListItem.vue'
 
@@ -30,6 +30,23 @@ const plannedIncome: Income = {
 }
 
 describe('IncomeList', () => {
+  it('shows opening funds as received with only a link to the source month', async () => {
+    const carryover: CarryoverIncome = {
+      ...receivedIncome,
+      id: 'carryover:month',
+      kind: 'carryover',
+      title: 'Остаток за 2026-08',
+      sourceMonthId: 'august',
+      sourceMonthKey: '2026-08',
+    }
+    const wrapper = mount(IncomeList, { props: { incomes: [carryover] } })
+    expect(wrapper.text()).toContain('Остаток за 2026-08')
+    expect(wrapper.text()).toContain('Получен')
+    expect(wrapper.find('.item-actions-menu').exists()).toBe(false)
+    expect(wrapper.findAll('button')).toHaveLength(1)
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.emitted('openSource')).toEqual([['2026-08']])
+  })
   it('renders incomes with different statuses and forwards an item action', async () => {
     const wrapper = mount(IncomeList, {
       props: { incomes: [receivedIncome, plannedIncome] },

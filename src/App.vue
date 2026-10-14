@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/AppLayout.vue'
 import AppLoader from '@/components/AppLoader.vue'
 import DataRefreshNotice from '@/components/DataRefreshNotice.vue'
 import { invalidateData, useDataQuery } from '@/composables/useDataQuery'
+import { useCalendarRefresh } from '@/composables/useCalendarRefresh'
 import { getCurrentMonthKey } from '@/domain/month'
 import { APP_ROUTE_NAMES } from '@/router/navigation'
-import { monthRepository, persistenceMode } from '@/shared/persistence'
+import { budgetWriter, monthRepository, persistenceMode } from '@/shared/persistence'
 import { useAuthStore } from '@/stores/auth'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
 import AuthPage from '@/views/AuthPage.vue'
@@ -17,8 +18,25 @@ const router = useRouter()
 const auth = useAuthStore()
 const selectedMonth = useSelectedMonthStore()
 void auth.initialize()
+useCalendarRefresh(() => auth.isAuthenticated)
 const months = useDataQuery(
-  () => monthRepository.list(),
+  async () => {
+    const userId = auth.userId
+    const stored = await monthRepository.list()
+    if (userId !== auth.userId) throw new Error('Аккаунт изменился во время загрузки')
+    const monthKey = getCurrentMonthKey()
+    if (stored.length > 0 && !stored.some((month) => month.monthKey === monthKey)) {
+      const timestamp = new Date().toISOString()
+      await budgetWriter.ensureCurrentMonth({
+        id: crypto.randomUUID(),
+        monthKey,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      })
+      return monthRepository.list()
+    }
+    return stored
+  },
   () => auth.isAuthenticated,
   () => auth.userId,
 )
@@ -29,23 +47,16 @@ watch(
   { flush: 'sync' },
 )
 
-function refreshOnResume(): void {
-  if (document.visibilityState === 'visible' && auth.isAuthenticated) invalidateData()
-}
-
-onMounted(() => {
-  document.addEventListener('visibilitychange', refreshOnResume)
-  window.addEventListener('pageshow', refreshOnResume)
-})
-onUnmounted(() => {
-  document.removeEventListener('visibilitychange', refreshOnResume)
-  window.removeEventListener('pageshow', refreshOnResume)
-})
-
 watch(
   [months, () => route.name, () => selectedMonth.selectedMonthKey],
   ([state, routeName]) => {
-    if (state.status !== 'ready' || routeName === undefined) return
+    if (
+      state.status !== 'ready' ||
+      state.refreshing ||
+      state.refreshError !== null ||
+      routeName === undefined
+    )
+      return
 
     if (state.data.length === 0) {
       selectedMonth.clearSelectedMonth()

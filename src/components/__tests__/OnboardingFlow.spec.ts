@@ -9,6 +9,7 @@ import App from '@/App.vue'
 import router from '@/router'
 import { APP_ROUTE_NAMES } from '@/router/navigation'
 import { getCurrentMonthKey } from '@/domain/month'
+import { getPreviousMonthKey } from '@/domain/month'
 import { db } from '@/shared/db/database'
 import { DexieOnboardingRepository } from '@/shared/db/onboarding'
 import { DexieMonthRepository } from '@/shared/db/repositories'
@@ -134,6 +135,23 @@ describe('first-run UI', () => {
     read.mockRestore()
     invalidateData()
     await vi.waitFor(() => expect(wrapper.text()).not.toContain('Не удалось обновить данные'))
+    wrapper.unmount()
+  })
+
+  it('opens the automatic current month without duplicating it after resume', async () => {
+    const previousKey = getPreviousMonthKey(currentMonthKey)
+    await new DexieOnboardingRepository(db).initialize(previousKey)
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    await router.push({ name: APP_ROUTE_NAMES.dashboard })
+    const wrapper = mount(App, { global: { plugins: [pinia, router] } })
+    await vi.waitFor(() => expect(wrapper.text()).toContain(`Бюджет за ${currentMonthKey}`))
+    expect(await db.budgetMonths.count()).toBe(2)
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    useSelectedMonthStore(pinia).setSelectedMonthKey(previousKey)
+    document.dispatchEvent(new Event('visibilitychange'))
+    await vi.waitFor(() => expect(wrapper.text()).toContain(`Бюджет за ${previousKey}`))
+    expect(await db.budgetMonths.count()).toBe(2)
     wrapper.unmount()
   })
 })

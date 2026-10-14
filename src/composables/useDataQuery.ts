@@ -7,16 +7,11 @@ export type DataQueryState<T> =
   | { status: 'error'; error: unknown }
 
 const invalidationVersion = ref(0)
-let invalidationQueued = false
 
 /** Notify every active query after a local mutation or a remote realtime event. */
 export function invalidateData(): void {
-  if (invalidationQueued) return
-  invalidationQueued = true
-  queueMicrotask(() => {
-    invalidationQueued = false
-    invalidationVersion.value += 1
-  })
+  // Vue batches the watchers within a tick; signal before callers change the month.
+  invalidationVersion.value += 1
 }
 
 export function useDataQuery<T>(

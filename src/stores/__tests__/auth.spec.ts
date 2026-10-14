@@ -4,12 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '../auth'
 
 const mocks = vi.hoisted(() => ({
-  getSession: vi.fn(),
-  onAuthStateChange: vi.fn(),
-  subscribe: vi.fn(),
-  stop: vi.fn(),
-  unsubscribe: vi.fn(),
-  invalidate: vi.fn(),
+  getSession: vi.fn<() => Promise<{ data: { session: Session | null }; error: unknown }>>(),
+  onAuthStateChange: vi.fn<
+    (callback: (event: string, value: Session | null) => void) => {
+      data: { subscription: { unsubscribe: () => void } }
+    }
+  >(),
+  subscribe: vi.fn<(client: unknown, userId: string) => () => void>(),
+  stop: vi.fn<() => void>(),
+  unsubscribe: vi.fn<() => void>(),
+  invalidate: vi.fn<() => void>(),
 }))
 vi.mock('@/shared/persistence', () => ({
   persistenceMode: 'cloud',

@@ -1,17 +1,21 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import AppDialog from '@/components/AppDialog.vue'
 import DataRefreshNotice from '@/components/DataRefreshNotice.vue'
 import IncomeList from '@/components/incomes/IncomeList.vue'
 import { invalidateData, useDataQuery } from '@/composables/useDataQuery'
 import { parseMoneyInput } from '@/domain/money'
-import type { EntityId, Income } from '@/domain/models'
-import { incomeRepository, monthRepository } from '@/shared/persistence'
+import { isCarryoverIncome, type EntityId, type Income, type MonthKey } from '@/domain/models'
+import { getCurrentMonthKey } from '@/domain/month'
+import { APP_ROUTE_NAMES } from '@/router/navigation'
+import { budgetReader, incomeRepository } from '@/shared/persistence'
 import { useNotificationStore } from '@/stores/notifications'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
 import { useAuthStore } from '@/stores/auth'
 
 const selectedMonth = useSelectedMonthStore()
+const router = useRouter()
 const auth = useAuthStore()
 const notifications = useNotificationStore()
 
@@ -19,9 +23,7 @@ const data = useDataQuery(
   async () => {
     const monthKey = selectedMonth.selectedMonthKey
     if (monthKey === null) throw new Error('Бюджетный месяц не выбран')
-    const month = await monthRepository.findByMonthKey(monthKey)
-    if (!month) throw new Error('Выбранный месяц не найден')
-    return { month, incomes: await incomeRepository.listByMonth(month.id) }
+    return budgetReader.readMonth(monthKey, getCurrentMonthKey())
   },
   undefined,
   () => `${auth.userId ?? 'local'}:${selectedMonth.selectedMonthKey}`,
@@ -43,7 +45,7 @@ function openIncomeForm(): void {
 
 function editIncome(id: EntityId): void {
   const income = incomes.value.find((item) => item.id === id)
-  if (!income) return
+  if (!income || isCarryoverIncome(income)) return
   editingId.value = income.id
   title.value = income.title
   amount.value = String(income.amount / 100).replace('.', ',')
@@ -106,7 +108,7 @@ async function saveIncome(): Promise<void> {
 
 async function toggleReceived(id: EntityId): Promise<void> {
   const income = incomes.value.find((item) => item.id === id)
-  if (!income) return
+  if (!income || isCarryoverIncome(income)) return
   const timestamp = new Date().toISOString()
   const updated: Income =
     income.status === 'received'
@@ -125,7 +127,8 @@ async function toggleReceived(id: EntityId): Promise<void> {
 
 async function deleteIncome(id: EntityId): Promise<void> {
   const income = incomes.value.find((item) => item.id === id)
-  if (!income || !window.confirm(`Удалить доход «${income.title}»?`)) return
+  if (!income || isCarryoverIncome(income) || !window.confirm(`Удалить доход «${income.title}»?`))
+    return
   try {
     await incomeRepository.delete(income.id)
     invalidateData()
@@ -134,6 +137,11 @@ async function deleteIncome(id: EntityId): Promise<void> {
   } catch {
     notifications.notifyError('Не удалось удалить доход')
   }
+}
+
+function openSourceMonth(monthKey: MonthKey): void {
+  selectedMonth.setSelectedMonthKey(monthKey)
+  void router.push({ name: APP_ROUTE_NAMES.dashboard })
 }
 </script>
 
@@ -158,6 +166,7 @@ async function deleteIncome(id: EntityId): Promise<void> {
         @toggle-received="toggleReceived"
         @edit="editIncome"
         @delete="deleteIncome"
+        @open-source="openSourceMonth"
       />
     </template>
 

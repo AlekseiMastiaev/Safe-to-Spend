@@ -16,7 +16,7 @@ describe('useDataQuery', () => {
   it('keeps loaded data during refresh and a failed refresh, then retries', async () => {
     let resolve!: (value: number) => void
     const query = vi
-      .fn()
+      .fn<() => Promise<number>>()
       .mockResolvedValueOnce(10)
       .mockImplementationOnce(
         () =>
@@ -46,7 +46,7 @@ describe('useDataQuery', () => {
     let resolveOld!: (value: string) => void
     const key = ref<string | null>('a:september')
     const query = vi
-      .fn()
+      .fn<() => Promise<string>>()
       .mockResolvedValueOnce('september')
       .mockImplementationOnce(
         () =>
@@ -69,7 +69,7 @@ describe('useDataQuery', () => {
   })
 
   it('coalesces invalidations and handles synchronous errors', async () => {
-    const query = vi.fn(() => 10)
+    const query = vi.fn<() => number>(() => 10)
     runQuery(query)
     await flushPromises()
     invalidateData()

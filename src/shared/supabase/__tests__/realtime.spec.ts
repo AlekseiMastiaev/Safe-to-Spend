@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { subscribeToUserData } from '../realtime'
 
-const invalidate = vi.hoisted(() => vi.fn())
+const invalidate = vi.hoisted(() => vi.fn<() => void>())
 vi.mock('@/composables/useDataQuery', () => ({ invalidateData: invalidate }))
 
 afterEach(() => {
@@ -15,17 +15,24 @@ describe('realtime refresh', () => {
     vi.useFakeTimers()
     let change!: () => void
     let status!: (value: string) => void
-    const channel = {
-      on: vi.fn((_event, _filter, callback) => {
+    interface TestChannel {
+      on: (event: string, filter: unknown, callback: () => void) => TestChannel
+      subscribe: (callback: (value: string) => void) => TestChannel
+    }
+    const channel: TestChannel = {
+      on: vi.fn<TestChannel['on']>((_event, _filter, callback) => {
         change = callback
         return channel
       }),
-      subscribe: vi.fn((callback) => {
+      subscribe: vi.fn<TestChannel['subscribe']>((callback) => {
         status = callback
         return channel
       }),
     }
-    const client = { channel: vi.fn(() => channel), removeChannel: vi.fn() }
+    const client = {
+      channel: vi.fn<(name: string) => TestChannel>(() => channel),
+      removeChannel: vi.fn<(value: TestChannel) => void>(),
+    }
     const stop = subscribeToUserData(client as unknown as SupabaseClient, 'user-a')
     change()
     change()

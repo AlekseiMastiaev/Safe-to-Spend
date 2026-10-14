@@ -301,6 +301,16 @@ async function deletePayment(id: EntityId): Promise<void> {
     </div>
 
     <DataRefreshNotice :state="data" />
+    <aside
+      v-if="data.status === 'ready' && data.data.month.obligationsReviewPending"
+      class="panel"
+      role="note"
+    >
+      <p>
+        Планы обязательных расходов скопированы автоматически. Проверьте суммы и отредактируйте их
+        при необходимости.
+      </p>
+    </aside>
     <label class="field obligation-search">
       <span>Поиск по обязательным расходам</span>
       <input

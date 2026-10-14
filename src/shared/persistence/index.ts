@@ -1,5 +1,6 @@
 import type {
   BudgetWriteRepository,
+  BudgetReadRepository,
   FreeExpenseRepository,
   IncomeRepository,
   MonthRepository,
@@ -8,6 +9,7 @@ import type {
   OnboardingRepository,
 } from '@/domain/repositories'
 import { db } from '@/shared/db/database'
+import { DexieBudgetReadRepository } from '@/shared/db/budget-reader'
 import { DexieOnboardingRepository } from '@/shared/db/onboarding'
 import {
   DexieFreeExpenseRepository,
@@ -20,6 +22,7 @@ import { DexieBudgetWriteRepository } from '@/shared/db/transactions'
 import { isCloudMode, requireSupabase, supabase } from '@/shared/supabase/client'
 import {
   SupabaseBudgetWriteRepository,
+  SupabaseBudgetReadRepository,
   SupabaseDataMaintenanceRepository,
   SupabaseFreeExpenseRepository,
   SupabaseIncomeRepository,
@@ -34,6 +37,10 @@ import { DexieDataMaintenanceRepository } from './local-maintenance'
 const cloudClient = supabase
 
 export const persistenceMode: 'cloud' | 'local' = isCloudMode ? 'cloud' : 'local'
+
+export const budgetReader: BudgetReadRepository = cloudClient
+  ? new SupabaseBudgetReadRepository(cloudClient)
+  : new DexieBudgetReadRepository(db)
 
 export const monthRepository: MonthRepository = cloudClient
   ? new SupabaseMonthRepository(cloudClient)

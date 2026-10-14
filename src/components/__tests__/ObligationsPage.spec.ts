@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
 
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { Dexie } from 'dexie'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -99,6 +99,52 @@ describe('ObligationsPage interface', () => {
     expect(groups[0]!.attributes('open')).toBeDefined()
     expect(groups[0]!.text()).toContain('Страховка')
     expect(groups[0]!.text()).not.toContain('Коммунальные услуги')
+    wrapper.unmount()
+  })
+
+  it('keeps the review notice on cancel and failed save, hides it after adding a plan', async () => {
+    await db.budgetMonths.update(month.id, { obligationsReviewPending: true })
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    useSelectedMonthStore(pinia).setSelectedMonthKey(month.monthKey)
+    const wrapper = mount(ObligationsPage, {
+      attachTo: document.body,
+      global: { plugins: [pinia] },
+    })
+    await vi.waitFor(() =>
+      expect(wrapper.text()).toContain('Планы обязательных расходов скопированы'),
+    )
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '+ Добавить обязательный расход')!
+      .trigger('click')
+    document.querySelector<HTMLButtonElement>('dialog button[aria-label="Закрыть окно"]')!.click()
+    await flushPromises()
+    expect(wrapper.text()).toContain('Планы обязательных расходов скопированы')
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '+ Добавить обязательный расход')!
+      .trigger('click')
+    const inputs = document.querySelectorAll<HTMLInputElement>('dialog .field input')
+    inputs[0]!.value = '0'
+    inputs[0]!.dispatchEvent(new Event('input', { bubbles: true }))
+    inputs[1]!.value = 'Новый расход'
+    inputs[1]!.dispatchEvent(new Event('input', { bubbles: true }))
+    document
+      .querySelector('dialog form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    await flushPromises()
+    expect(wrapper.text()).toContain('Планы обязательных расходов скопированы')
+    expect((await db.budgetMonths.get(month.id))?.obligationsReviewPending).toBe(true)
+    inputs[0]!.value = '1000'
+    inputs[0]!.dispatchEvent(new Event('input', { bubbles: true }))
+    document
+      .querySelector('dialog form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    await vi.waitFor(() =>
+      expect(wrapper.text()).not.toContain('Планы обязательных расходов скопированы'),
+    )
+    expect((await db.budgetMonths.get(month.id))?.obligationsReviewPending).toBe(false)
     wrapper.unmount()
   })
 })

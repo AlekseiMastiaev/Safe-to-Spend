@@ -1,21 +1,25 @@
 <script setup lang="ts">
 import ItemActionsMenu from '@/components/ItemActionsMenu.vue'
 import { formatMoney } from '@/domain/money'
-import type { Income } from '@/domain/models'
+import { isCarryoverIncome, type BudgetIncome, type Income, type MonthKey } from '@/domain/models'
 
 const props = defineProps<{
-  income: Income
+  income: BudgetIncome
 }>()
 
 const emit = defineEmits<{
   toggleReceived: [id: Income['id']]
   edit: [id: Income['id']]
   delete: [id: Income['id']]
+  openSource: [monthKey: MonthKey]
 }>()
 </script>
 
 <template>
-  <article class="income-list-item">
+  <article
+    class="income-list-item"
+    :class="{ 'income-list-item--carryover': isCarryoverIncome(income) }"
+  >
     <div class="income-list-item__details">
       <h3>{{ props.income.title }}</h3>
     </div>
@@ -33,7 +37,15 @@ const emit = defineEmits<{
       {{ props.income.status === 'received' ? 'Получен' : 'Запланирован' }}
     </span>
 
-    <ItemActionsMenu :label="`Действия с доходом: ${props.income.title}`">
+    <button
+      v-if="isCarryoverIncome(income)"
+      class="button button--secondary"
+      type="button"
+      @click="emit('openSource', income.sourceMonthKey)"
+    >
+      Открыть исходный месяц
+    </button>
+    <ItemActionsMenu v-else :label="`Действия с доходом: ${props.income.title}`">
       <button type="button" @click="emit('toggleReceived', props.income.id)">
         {{ props.income.status === 'received' ? 'Вернуть в план' : 'Отметить полученным' }}
       </button>
@@ -62,6 +74,10 @@ const emit = defineEmits<{
 
 .income-list-item__details {
   min-width: 0;
+}
+
+.income-list-item--carryover {
+  padding-right: var(--space-3);
 }
 
 h3,

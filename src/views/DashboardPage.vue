@@ -4,13 +4,8 @@ import BudgetSummary from '@/components/dashboard/BudgetSummary.vue'
 import DataRefreshNotice from '@/components/DataRefreshNotice.vue'
 import { useDataQuery } from '@/composables/useDataQuery'
 import { calculateBudgetSummary } from '@/domain/calculations'
-import {
-  freeExpenseRepository,
-  incomeRepository,
-  monthRepository,
-  obligationRepository,
-  paymentRepository,
-} from '@/shared/persistence'
+import { getCurrentMonthKey } from '@/domain/month'
+import { budgetReader } from '@/shared/persistence'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
 import { useAuthStore } from '@/stores/auth'
 
@@ -21,15 +16,7 @@ const data = useDataQuery(
   async () => {
     const monthKey = selectedMonth.selectedMonthKey
     if (monthKey === null) throw new Error('Бюджетный месяц не выбран')
-    const month = await monthRepository.findByMonthKey(monthKey)
-    if (!month) throw new Error('Выбранный месяц не найден')
-    const [incomes, obligations, payments, freeExpenses] = await Promise.all([
-      incomeRepository.listByMonth(month.id),
-      obligationRepository.listByMonth(month.id),
-      paymentRepository.listByMonth(month.id),
-      freeExpenseRepository.listByMonth(month.id),
-    ])
-    return { month, incomes, obligations, payments, freeExpenses }
+    return budgetReader.readMonth(monthKey, getCurrentMonthKey())
   },
   undefined,
   () => `${auth.userId ?? 'local'}:${selectedMonth.selectedMonthKey}`,

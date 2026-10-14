@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   AppSettings,
   BudgetMonth,
+  MonthBudget,
   EntityId,
   FreeExpense,
   Income,
@@ -11,9 +12,12 @@ import type {
   ObligationTemplate,
 } from '@/domain/models'
 import { isValidMonthKey } from '@/domain/month'
+import { isCarryoverIncome } from '@/domain/models'
+import { readMonthWithCarryover } from '@/domain/carryover'
 import type {
   AddObligationPaymentsInput,
   BudgetWriteRepository,
+  BudgetReadRepository,
   FreeExpenseRepository,
   IncomeRepository,
   MonthRepository,
@@ -26,6 +30,7 @@ import type { BackupData, DataMaintenanceRepository } from '@/shared/persistence
 interface MonthRow {
   id: string
   month_key: string
+  obligations_review_pending?: boolean
   created_at: string
   updated_at: string
 }
@@ -93,6 +98,14 @@ interface SettingsRow {
   updated_at: string
 }
 
+interface BudgetHistoryRow {
+  budget_months: MonthRow[]
+  incomes: IncomeRow[]
+  monthly_obligations: ObligationRow[]
+  obligation_payments: PaymentRow[]
+  free_expenses: ExpenseRow[]
+}
+
 type SupabaseError = { message: string } | null
 
 function assertNoError(error: SupabaseError): void {
@@ -116,6 +129,7 @@ function toMonth(row: MonthRow): BudgetMonth {
   return {
     id: row.id,
     monthKey: row.month_key,
+    obligationsReviewPending: row.obligations_review_pending ?? false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -207,6 +221,30 @@ function toSettings(row: SettingsRow): AppSettings {
   }
 }
 
+export class SupabaseBudgetReadRepository implements BudgetReadRepository {
+  constructor(private readonly client: SupabaseClient) {}
+
+  async readMonth(monthKey: MonthKey, currentMonthKey: MonthKey): Promise<MonthBudget> {
+    if (!isValidMonthKey(monthKey) || !isValidMonthKey(currentMonthKey)) {
+      throw new Error('Некорректный бюджетный месяц')
+    }
+    const { data, error } = await this.client.rpc('read_budget_history', { p_month_key: monthKey })
+    assertNoError(error)
+    const rows = requireRow(data as BudgetHistoryRow | null, 'Не удалось прочитать бюджет')
+    return readMonthWithCarryover(
+      {
+        budgetMonths: rows.budget_months.map(toMonth),
+        incomes: rows.incomes.map(toIncome),
+        monthlyObligations: rows.monthly_obligations.map(toObligation),
+        obligationPayments: rows.obligation_payments.map(toPayment),
+        freeExpenses: rows.free_expenses.map(toExpense),
+      },
+      monthKey,
+      currentMonthKey,
+    )
+  }
+}
+
 export class SupabaseMonthRepository implements MonthRepository {
   constructor(private readonly client: SupabaseClient) {}
 
@@ -242,6 +280,7 @@ export class SupabaseMonthRepository implements MonthRepository {
       id: month.id,
       user_id: userId,
       month_key: month.monthKey,
+      obligations_review_pending: month.obligationsReviewPending ?? false,
       created_at: month.createdAt,
       updated_at: month.updatedAt,
     })
@@ -269,6 +308,9 @@ export class SupabaseIncomeRepository implements IncomeRepository {
   }
 
   async save(income: Income): Promise<void> {
+    if (isCarryoverIncome(income) || income.id.startsWith('carryover:')) {
+      throw new Error('Перенос остатка изменяется только через исходный месяц')
+    }
     const userId = await requireUserId(this.client)
     const { error } = await this.client.from('incomes').upsert({
       id: income.id,
@@ -285,6 +327,9 @@ export class SupabaseIncomeRepository implements IncomeRepository {
   }
 
   async delete(id: EntityId): Promise<void> {
+    if (id.startsWith('carryover:')) {
+      throw new Error('Перенос остатка изменяется только через исходный месяц')
+    }
     const { error } = await this.client.from('incomes').delete().eq('id', id)
     assertNoError(error)
   }
@@ -461,6 +506,18 @@ export class SupabaseBudgetWriteRepository implements BudgetWriteRepository {
     private readonly client: SupabaseClient,
     private readonly createId: () => EntityId = () => crypto.randomUUID(),
   ) {}
+
+  async ensureCurrentMonth(month: BudgetMonth): Promise<BudgetMonth | null> {
+    if (!isValidMonthKey(month.monthKey)) throw new Error('Некорректный бюджетный месяц')
+    const { data, error } = await this.client.rpc('ensure_current_budget_month', {
+      p_month_id: month.id,
+      p_month_key: month.monthKey,
+      p_timestamp: month.createdAt,
+    })
+    assertNoError(error)
+    const rows = data as MonthRow[]
+    return rows.length > 0 ? toMonth(rows[0]!) : null
+  }
 
   createMonthFromTemplates(month: BudgetMonth): Promise<MonthlyObligation[]> {
     return this.createMonthFromSource(month, null)

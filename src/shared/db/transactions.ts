@@ -2,6 +2,7 @@ import type { BudgetMonth, EntityId, MonthlyObligation, ObligationPayment } from
 import type { AddObligationPaymentsInput, BudgetWriteRepository } from '@/domain/repositories'
 import { parseMonthKey } from '@/domain/month'
 import type { SafeToSpendDatabase } from './database'
+import { acknowledgeObligationReview } from './obligation-review'
 
 /** Keep validation outside the transaction; no incomplete batch can be committed. */
 function assertPaymentAmounts(amounts: readonly number[]): void {
@@ -23,6 +24,32 @@ export class DexieBudgetWriteRepository implements BudgetWriteRepository {
     private readonly database: SafeToSpendDatabase,
     private readonly createId: () => EntityId = () => crypto.randomUUID(),
   ) {}
+
+  async ensureCurrentMonth(month: BudgetMonth): Promise<BudgetMonth | null> {
+    if (parseMonthKey(month.monthKey) === null) throw new Error('Некорректный бюджетный месяц')
+    return this.database.transaction(
+      'rw',
+      this.database.budgetMonths,
+      this.database.monthlyObligations,
+      async () => {
+        const existing = await this.database.budgetMonths
+          .where('monthKey')
+          .equals(month.monthKey)
+          .first()
+        if (existing) return existing
+        if ((await this.database.budgetMonths.count()) === 0) return null
+        const source = await this.database.budgetMonths
+          .where('monthKey')
+          .below(month.monthKey)
+          .last()
+        const created = { ...month, obligationsReviewPending: false }
+        const obligations = await this.createMonthFromSource(created, source?.id ?? null)
+        created.obligationsReviewPending = obligations.length > 0
+        await this.database.budgetMonths.put(created)
+        return created
+      },
+    )
+  }
 
   async createMonthFromTemplates(month: BudgetMonth): Promise<MonthlyObligation[]> {
     if (parseMonthKey(month.monthKey) === null) {
@@ -140,6 +167,7 @@ export class DexieBudgetWriteRepository implements BudgetWriteRepository {
         }))
 
         await this.database.obligationPayments.bulkAdd(payments)
+        await acknowledgeObligationReview(this.database, obligation.monthId)
         return payments
       },
     )
@@ -148,11 +176,14 @@ export class DexieBudgetWriteRepository implements BudgetWriteRepository {
   async deleteObligationWithPayments(obligationId: EntityId): Promise<void> {
     await this.database.transaction(
       'rw',
+      this.database.budgetMonths,
       this.database.monthlyObligations,
       this.database.obligationPayments,
       async () => {
+        const obligation = await this.database.monthlyObligations.get(obligationId)
         await this.database.obligationPayments.where('obligationId').equals(obligationId).delete()
         await this.database.monthlyObligations.delete(obligationId)
+        if (obligation) await acknowledgeObligationReview(this.database, obligation.monthId)
       },
     )
   }

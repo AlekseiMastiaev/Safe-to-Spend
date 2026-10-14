@@ -30,6 +30,14 @@ export function getCurrentIsoDate(now: Date = new Date()): string {
   return `${String(now.getFullYear()).padStart(4, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
 
+export function getMonthStartIsoDateTime(monthKey: MonthKey): string {
+  if (!isValidMonthKey(monthKey)) throw new Error('Некорректный идентификатор месяца')
+  const start = new Date(0)
+  start.setFullYear(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5, 7)) - 1, 1)
+  start.setHours(0, 0, 0, 0)
+  return start.toISOString()
+}
+
 export function getPreviousMonthKey(monthKey: MonthKey): MonthKey {
   if (!isValidMonthKey(monthKey)) {
     throw new Error('Некорректный идентификатор месяца')

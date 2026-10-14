@@ -6,9 +6,14 @@ import type {
   IsoDate,
   MoneyMinorUnits,
   MonthKey,
+  MonthBudget,
   MonthlyObligation,
   ObligationPayment,
 } from './models'
+
+export interface BudgetReadRepository {
+  readMonth(monthKey: MonthKey, currentMonthKey: MonthKey): Promise<MonthBudget>
+}
 
 export interface MonthRepository {
   findById(id: EntityId): Promise<BudgetMonth | undefined>
@@ -63,6 +68,8 @@ export interface AddObligationPaymentsInput {
 
 /** Multi-table commands; callers do not need to know which database implements them. */
 export interface BudgetWriteRepository {
+  /** Returns null only before onboarding; reuses an existing current month unchanged. */
+  ensureCurrentMonth(month: BudgetMonth): Promise<BudgetMonth | null>
   createMonthFromTemplates(month: BudgetMonth): Promise<MonthlyObligation[]>
   createMonthFromSource(
     month: BudgetMonth,

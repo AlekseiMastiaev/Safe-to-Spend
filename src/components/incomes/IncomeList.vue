@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import type { Income } from '@/domain/models'
+import type { BudgetIncome, Income, MonthKey } from '@/domain/models'
 import EmptyIncomeList from './EmptyIncomeList.vue'
 import IncomeListItem from './IncomeListItem.vue'
 
 const props = defineProps<{
-  incomes: readonly Income[]
+  incomes: readonly BudgetIncome[]
 }>()
 
 const emit = defineEmits<{
   toggleReceived: [id: Income['id']]
   edit: [id: Income['id']]
   delete: [id: Income['id']]
+  openSource: [monthKey: MonthKey]
 }>()
 </script>
 
@@ -22,6 +23,7 @@ const emit = defineEmits<{
         @toggle-received="emit('toggleReceived', $event)"
         @edit="emit('edit', $event)"
         @delete="emit('delete', $event)"
+        @open-source="emit('openSource', $event)"
       />
     </li>
   </ul>

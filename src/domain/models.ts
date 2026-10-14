@@ -16,6 +16,8 @@ export interface PersistedEntity {
 
 export interface BudgetMonth extends PersistedEntity {
   monthKey: MonthKey
+  /** Absent in older budgets; interpreted as false. */
+  obligationsReviewPending?: boolean
 }
 
 export type ColorScheme = 'system' | 'light' | 'dark'
@@ -45,6 +47,35 @@ export interface ReceivedIncome extends IncomeBase {
 
 export type Income = PlannedIncome | ReceivedIncome
 export type IncomeStatus = Income['status']
+
+/** Opening funds are derived from history, never written to the incomes table. */
+export interface CarryoverIncome extends ReceivedIncome {
+  kind: 'carryover'
+  sourceMonthId: EntityId
+  sourceMonthKey: MonthKey
+}
+
+export type BudgetIncome = Income | CarryoverIncome
+
+export function isCarryoverIncome(income: BudgetIncome): income is CarryoverIncome {
+  return 'kind' in income && income.kind === 'carryover'
+}
+
+export interface BudgetHistory {
+  budgetMonths: readonly BudgetMonth[]
+  incomes: readonly Income[]
+  monthlyObligations: readonly MonthlyObligation[]
+  obligationPayments: readonly ObligationPayment[]
+  freeExpenses: readonly FreeExpense[]
+}
+
+export interface MonthBudget {
+  month: BudgetMonth
+  incomes: BudgetIncome[]
+  obligations: MonthlyObligation[]
+  payments: ObligationPayment[]
+  freeExpenses: FreeExpense[]
+}
 
 export interface ObligationTemplate extends PersistedEntity {
   title: string

@@ -15,6 +15,8 @@ import type {
   ObligationRepository,
 } from '@/domain/repositories'
 import type { SafeToSpendDatabase } from './database'
+import { isCarryoverIncome } from '@/domain/models'
+import { acknowledgeObligationReview } from './obligation-review'
 
 export class DexieMonthRepository implements MonthRepository {
   constructor(private readonly database: SafeToSpendDatabase) {}
@@ -51,6 +53,9 @@ export class DexieIncomeRepository implements IncomeRepository {
   }
 
   async save(income: Income): Promise<void> {
+    if (isCarryoverIncome(income) || income.id.startsWith('carryover:')) {
+      throw new Error('Перенос остатка изменяется только через исходный месяц')
+    }
     assertPositiveMoney(income.amount, 'Доход')
     assertTitle(income.title, 'Доход')
     assertIncomeState(income)
@@ -73,6 +78,9 @@ export class DexieIncomeRepository implements IncomeRepository {
   }
 
   delete(id: EntityId): Promise<void> {
+    if (id.startsWith('carryover:')) {
+      throw new Error('Перенос остатка изменяется только через исходный месяц')
+    }
     return this.database.incomes.delete(id)
   }
 }
@@ -150,6 +158,7 @@ export class DexieObligationRepository implements ObligationRepository {
           throw new Error('Нельзя перенести обязательство в другой месяц')
         }
         await this.database.monthlyObligations.put(obligation)
+        await acknowledgeObligationReview(this.database, obligation.monthId)
       },
     )
   }
@@ -203,12 +212,22 @@ export class DexieObligationPaymentRepository implements ObligationPaymentReposi
           throw new Error('Платёж должен быть положительной суммой в копейках')
         }
         await this.database.obligationPayments.put(payment)
+        await acknowledgeObligationReview(this.database, payment.monthId)
       },
     )
   }
 
-  delete(id: EntityId): Promise<void> {
-    return this.database.obligationPayments.delete(id)
+  async delete(id: EntityId): Promise<void> {
+    await this.database.transaction(
+      'rw',
+      this.database.budgetMonths,
+      this.database.obligationPayments,
+      async () => {
+        const payment = await this.database.obligationPayments.get(id)
+        await this.database.obligationPayments.delete(id)
+        if (payment) await acknowledgeObligationReview(this.database, payment.monthId)
+      },
+    )
   }
 }
 
