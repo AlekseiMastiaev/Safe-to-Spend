@@ -5,6 +5,11 @@ import AppNavigation from '@/components/AppNavigation.vue'
 import AppNotificationHost from '@/components/AppNotificationHost.vue'
 import MobileBottomNavigation from '@/components/MobileBottomNavigation.vue'
 import { navigationItems } from '@/router/navigation'
+import { useAuthStore } from '@/stores/auth'
+import { useSelectedMonthStore } from '@/stores/selectedMonth'
+
+const auth = useAuthStore()
+const selectedMonth = useSelectedMonthStore()
 </script>
 
 <template>
@@ -13,7 +18,7 @@ import { navigationItems } from '@/router/navigation'
     <AppNavigation :items="navigationItems" />
 
     <main class="app-main">
-      <RouterView />
+      <RouterView :key="`${auth.userId ?? 'local'}:${selectedMonth.selectedMonthKey}`" />
     </main>
 
     <MobileBottomNavigation :items="navigationItems" />

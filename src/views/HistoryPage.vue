@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import DataRefreshNotice from '@/components/DataRefreshNotice.vue'
 import { invalidateData, useDataQuery } from '@/composables/useDataQuery'
 import type { BudgetMonth } from '@/domain/models'
 import { getCurrentMonthKey, parseMonthKey } from '@/domain/month'
@@ -8,11 +9,17 @@ import { APP_ROUTE_NAMES } from '@/router/navigation'
 import { budgetWriter, monthRepository } from '@/shared/persistence'
 import { useNotificationStore } from '@/stores/notifications'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const selectedMonth = useSelectedMonthStore()
+const auth = useAuthStore()
 const notifications = useNotificationStore()
-const monthsState = useDataQuery(() => monthRepository.list())
+const monthsState = useDataQuery(
+  () => monthRepository.list(),
+  undefined,
+  () => auth.userId,
+)
 const months = computed(() =>
   monthsState.value.status === 'ready' ? [...monthsState.value.data].reverse() : [],
 )
@@ -78,6 +85,7 @@ async function createMonth(): Promise<void> {
       </button>
     </form>
 
+    <DataRefreshNotice :state="monthsState" />
     <p v-if="monthsState.status === 'loading'" role="status">Загружаем месяцы…</p>
     <p v-else-if="monthsState.status === 'error'" class="form-error" role="alert">
       Не удалось загрузить историю.

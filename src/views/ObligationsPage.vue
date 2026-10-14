@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import AppDialog from '@/components/AppDialog.vue'
+import DataRefreshNotice from '@/components/DataRefreshNotice.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import ObligationList from '@/components/obligations/ObligationList.vue'
 import PaymentHistoryDialog from '@/components/obligations/PaymentHistoryDialog.vue'
@@ -17,21 +18,27 @@ import {
 } from '@/shared/persistence'
 import { useNotificationStore } from '@/stores/notifications'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
+import { useAuthStore } from '@/stores/auth'
 
 const selectedMonth = useSelectedMonthStore()
+const auth = useAuthStore()
 const notifications = useNotificationStore()
 
-const data = useDataQuery(async () => {
-  const monthKey = selectedMonth.selectedMonthKey
-  if (monthKey === null) throw new Error('Бюджетный месяц не выбран')
-  const month = await monthRepository.findByMonthKey(monthKey)
-  if (!month) throw new Error('Выбранный месяц не найден')
-  const [obligations, payments] = await Promise.all([
-    obligationRepository.listByMonth(month.id),
-    paymentRepository.listByMonth(month.id),
-  ])
-  return { month, obligations, payments }
-})
+const data = useDataQuery(
+  async () => {
+    const monthKey = selectedMonth.selectedMonthKey
+    if (monthKey === null) throw new Error('Бюджетный месяц не выбран')
+    const month = await monthRepository.findByMonthKey(monthKey)
+    if (!month) throw new Error('Выбранный месяц не найден')
+    const [obligations, payments] = await Promise.all([
+      obligationRepository.listByMonth(month.id),
+      paymentRepository.listByMonth(month.id),
+    ])
+    return { month, obligations, payments }
+  },
+  undefined,
+  () => `${auth.userId ?? 'local'}:${selectedMonth.selectedMonthKey}`,
+)
 
 const previews = computed(() => {
   if (data.value.status !== 'ready') return []
@@ -293,6 +300,7 @@ async function deletePayment(id: EntityId): Promise<void> {
       </button>
     </div>
 
+    <DataRefreshNotice :state="data" />
     <label class="field obligation-search">
       <span>Поиск по обязательным расходам</span>
       <input

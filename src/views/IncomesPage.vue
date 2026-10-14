@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import AppDialog from '@/components/AppDialog.vue'
+import DataRefreshNotice from '@/components/DataRefreshNotice.vue'
 import IncomeList from '@/components/incomes/IncomeList.vue'
 import { invalidateData, useDataQuery } from '@/composables/useDataQuery'
 import { parseMoneyInput } from '@/domain/money'
@@ -8,17 +9,23 @@ import type { EntityId, Income } from '@/domain/models'
 import { incomeRepository, monthRepository } from '@/shared/persistence'
 import { useNotificationStore } from '@/stores/notifications'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
+import { useAuthStore } from '@/stores/auth'
 
 const selectedMonth = useSelectedMonthStore()
+const auth = useAuthStore()
 const notifications = useNotificationStore()
 
-const data = useDataQuery(async () => {
-  const monthKey = selectedMonth.selectedMonthKey
-  if (monthKey === null) throw new Error('Бюджетный месяц не выбран')
-  const month = await monthRepository.findByMonthKey(monthKey)
-  if (!month) throw new Error('Выбранный месяц не найден')
-  return { month, incomes: await incomeRepository.listByMonth(month.id) }
-})
+const data = useDataQuery(
+  async () => {
+    const monthKey = selectedMonth.selectedMonthKey
+    if (monthKey === null) throw new Error('Бюджетный месяц не выбран')
+    const month = await monthRepository.findByMonthKey(monthKey)
+    if (!month) throw new Error('Выбранный месяц не найден')
+    return { month, incomes: await incomeRepository.listByMonth(month.id) }
+  },
+  undefined,
+  () => `${auth.userId ?? 'local'}:${selectedMonth.selectedMonthKey}`,
+)
 
 const incomes = computed(() => (data.value.status === 'ready' ? data.value.data.incomes : []))
 const title = ref('')
@@ -140,6 +147,7 @@ async function deleteIncome(id: EntityId): Promise<void> {
       <button class="button" type="button" @click="openIncomeForm">+ Добавить доход</button>
     </div>
 
+    <DataRefreshNotice :state="data" />
     <p v-if="data.status === 'loading'" role="status">Загружаем доходы…</p>
     <p v-else-if="data.status === 'error'" class="form-error" role="alert">
       Не удалось загрузить доходы.

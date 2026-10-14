@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js'
-import { computed, ref } from 'vue'
+import { computed, onScopeDispose, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { invalidateData } from '@/composables/useDataQuery'
 import { getCloudClient, persistenceMode } from '@/shared/persistence'
@@ -14,41 +14,75 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref<string | null>(null)
   let initialized = false
   let stopRealtime: (() => void) | null = null
+  let stopAuth: (() => void) | null = null
+  let initialization: Promise<void> | null = null
+  let realtimeTimer: ReturnType<typeof setTimeout> | null = null
+  let disposed = false
 
   const isAuthenticated = computed(() => status.value === 'authenticated')
   const isCloud = computed(() => persistenceMode === 'cloud')
 
   function applySession(session: Session | null): void {
-    stopRealtime?.()
-    stopRealtime = null
-    userId.value = session?.user.id ?? null
+    if (disposed) return
+    const nextUserId = session?.user.id ?? null
+    const nextStatus = session ? 'authenticated' : 'anonymous'
+    const changed = userId.value !== nextUserId || status.value !== nextStatus
+    userId.value = nextUserId
     userEmail.value = session?.user.email ?? null
-    status.value = session ? 'authenticated' : 'anonymous'
-    if (session) stopRealtime = subscribeToUserData(getCloudClient())
+    status.value = nextStatus
+    error.value = null
+    if (!changed) return
+
+    // Keep Supabase operations outside its synchronous auth callback.
+    if (realtimeTimer !== null) clearTimeout(realtimeTimer)
+    realtimeTimer = setTimeout(() => {
+      realtimeTimer = null
+      stopRealtime?.()
+      stopRealtime = userId.value ? subscribeToUserData(getCloudClient(), userId.value) : null
+    }, 0)
     invalidateData()
   }
 
   async function initialize(): Promise<void> {
     if (initialized) return
-    initialized = true
+    if (initialization) return initialization
     error.value = null
 
     if (persistenceMode === 'local') {
       status.value = 'authenticated'
+      initialized = true
       return
     }
 
     status.value = 'loading'
-    const client = getCloudClient()
-    const { data, error: sessionError } = await client.auth.getSession()
-    if (sessionError) {
-      error.value = sessionError.message
-      status.value = 'error'
-      return
-    }
-    applySession(data.session)
-    client.auth.onAuthStateChange((_event, session) => applySession(session))
+    initialization = (async () => {
+      try {
+        const client = getCloudClient()
+        const { data, error: sessionError } = await client.auth.getSession()
+        if (disposed) return
+        if (sessionError) throw sessionError
+        applySession(data.session)
+        const { data: listener } = client.auth.onAuthStateChange((_event, session) =>
+          applySession(session),
+        )
+        stopAuth = () => listener.subscription.unsubscribe()
+        initialized = true
+      } catch (cause) {
+        error.value = cause instanceof Error ? cause.message : 'Не удалось проверить сессию'
+        status.value = 'error'
+      } finally {
+        initialization = null
+      }
+    })()
+    return initialization
   }
+
+  onScopeDispose(() => {
+    disposed = true
+    if (realtimeTimer !== null) clearTimeout(realtimeTimer)
+    stopRealtime?.()
+    stopAuth?.()
+  })
 
   async function sendMagicLink(email: string): Promise<void> {
     error.value = null

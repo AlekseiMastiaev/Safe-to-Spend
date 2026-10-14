@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
 
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { Dexie } from 'dexie'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,6 +13,7 @@ import { db } from '@/shared/db/database'
 import { DexieOnboardingRepository } from '@/shared/db/onboarding'
 import { DexieMonthRepository } from '@/shared/db/repositories'
 import { useSelectedMonthStore } from '@/stores/selectedMonth'
+import { invalidateData } from '@/composables/useDataQuery'
 
 describe('first-run UI', () => {
   const currentMonthKey = getCurrentMonthKey()
@@ -98,6 +99,41 @@ describe('first-run UI', () => {
     )
     expect(router.currentRoute.value.name).toBe(APP_ROUTE_NAMES.dashboard)
     expect(await db.budgetMonths.count()).toBe(0)
+    wrapper.unmount()
+  })
+
+  it('preserves an income draft through refresh, resume, and a background read error', async () => {
+    await new DexieOnboardingRepository(db).initialize(currentMonthKey)
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    await router.push({ name: APP_ROUTE_NAMES.incomes })
+    await router.isReady()
+    const wrapper = mount(App, {
+      attachTo: document.body,
+      global: { plugins: [pinia, router] },
+    })
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Доходов пока нет'))
+    const open = wrapper.findAll('button').find((button) => button.text() === '+ Добавить доход')!
+    await open.trigger('click')
+    const input = document.querySelector<HTMLInputElement>('dialog input')!
+    input.value = '12345'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await flushPromises()
+    invalidateData()
+    await flushPromises()
+    expect(document.querySelector('dialog input')).toBe(input)
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    document.dispatchEvent(new Event('visibilitychange'))
+    const read = vi
+      .spyOn(DexieMonthRepository.prototype, 'list')
+      .mockRejectedValueOnce(new Error('offline'))
+    invalidateData()
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Не удалось обновить данные'))
+    expect(input.value).toBe('12345')
+    expect(document.querySelector('dialog input')).toBe(input)
+    read.mockRestore()
+    invalidateData()
+    await vi.waitFor(() => expect(wrapper.text()).not.toContain('Не удалось обновить данные'))
     wrapper.unmount()
   })
 })

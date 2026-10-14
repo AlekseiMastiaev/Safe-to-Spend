@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/AppLayout.vue'
 import AppLoader from '@/components/AppLoader.vue'
-import { useDataQuery } from '@/composables/useDataQuery'
+import DataRefreshNotice from '@/components/DataRefreshNotice.vue'
+import { invalidateData, useDataQuery } from '@/composables/useDataQuery'
 import { getCurrentMonthKey } from '@/domain/month'
 import { APP_ROUTE_NAMES } from '@/router/navigation'
 import { monthRepository, persistenceMode } from '@/shared/persistence'
@@ -19,7 +20,27 @@ void auth.initialize()
 const months = useDataQuery(
   () => monthRepository.list(),
   () => auth.isAuthenticated,
+  () => auth.userId,
 )
+
+watch(
+  () => auth.userId,
+  () => selectedMonth.clearSelectedMonth(),
+  { flush: 'sync' },
+)
+
+function refreshOnResume(): void {
+  if (document.visibilityState === 'visible' && auth.isAuthenticated) invalidateData()
+}
+
+onMounted(() => {
+  document.addEventListener('visibilitychange', refreshOnResume)
+  window.addEventListener('pageshow', refreshOnResume)
+})
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', refreshOnResume)
+  window.removeEventListener('pageshow', refreshOnResume)
+})
 
 watch(
   [months, () => route.name, () => selectedMonth.selectedMonthKey],
@@ -55,17 +76,13 @@ const showLayout = computed(() => {
     ? route.name === APP_ROUTE_NAMES.onboarding
     : route.name !== APP_ROUTE_NAMES.onboarding && selectedMonth.selectedMonthKey !== null
 })
-
-function reloadPage(): void {
-  window.location.reload()
-}
 </script>
 
 <template>
   <AppLoader v-if="auth.status === 'idle' || auth.status === 'loading'" message="Проверяем вход…" />
   <main v-else-if="auth.status === 'error'" class="startup-state" role="alert">
-    <p>Не удалось проверить сессию. Обновите страницу и попробуйте снова.</p>
-    <button type="button" @click="reloadPage">Обновить</button>
+    <p>Не удалось проверить сессию. Попробуйте снова.</p>
+    <button type="button" @click="auth.initialize">Повторить</button>
   </main>
   <AuthPage v-else-if="!auth.isAuthenticated" />
   <AppLoader
@@ -82,9 +99,12 @@ function reloadPage(): void {
           : 'Не удалось прочитать локальные данные. Проверьте доступ к хранилищу браузера.'
       }}
     </p>
-    <button type="button" @click="reloadPage">Повторить</button>
+    <button type="button" @click="invalidateData">Повторить</button>
   </main>
-  <AppLayout v-else-if="showLayout" />
+  <template v-else-if="showLayout">
+    <DataRefreshNotice :state="months" />
+    <AppLayout />
+  </template>
   <AppLoader v-else message="Открываем нужную страницу…" />
 </template>
 
