@@ -73,7 +73,7 @@ async function createMonth(): Promise<void> {
       <p>Переключайтесь между бюджетами или создайте новый месяц на основе текущих планов.</p>
     </div>
 
-    <form class="panel form-grid" @submit.prevent="createMonth">
+    <form class="panel form-grid month-form" @submit.prevent="createMonth">
       <h3>Новый бюджетный месяц</h3>
       <label class="field">
         <span>Месяц</span>
@@ -109,6 +109,17 @@ async function createMonth(): Promise<void> {
 </template>
 
 <style scoped>
+.month-form {
+  min-inline-size: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.month-form input[type='month'] {
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
 .month-list {
   display: grid;
   gap: var(--space-3);
